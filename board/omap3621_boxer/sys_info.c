@@ -207,6 +207,8 @@ void display_board_info(u32 btype)
 	char p_l3[] = "133";
 #elif defined(L3_100MHZ)
 	char p_l3[] = "100";
+#elif defined (CONFIG_ENCORE_1GHZ_SWITCH)
+	char p_l3[] = "200";
 #endif
 
 #if defined(PRCM_PCLK_OPP1)
@@ -224,6 +226,14 @@ void display_board_info(u32 btype)
 	rev = get_cpu_rev();
 	cpu = get_cpu_type();
 	sec = get_device_type();
+
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+        /* check ISP2P of CONTROL_FEATURE_OMAP_STATUS register for 3621 vs 3622 detection */
+  	if( read_board_1GHz_support() && ((__raw_readl(CONTROL_SCALABLE_OMAP_STATUS) & 1) != 1) )
+		strcpy (p_l3,"200");
+	else
+		strcpy (p_l3,"166");
+#endif
 
 	if (is_mem_sdr())
 		mem_s = mem_sdr;

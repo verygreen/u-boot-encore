@@ -203,6 +203,13 @@ get_core_dpll_param:
 	adr r0, core_dpll_param
 	mov pc, lr
 
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+.globl get_core_dpll_param_3622
+get_core_dpll_param_3622:
+	adr r0, core_dpll_param_3622
+	mov pc, lr
+#endif
+
 .globl get_per_dpll_param
 get_per_dpll_param:
 	adr r0, per_dpll_param

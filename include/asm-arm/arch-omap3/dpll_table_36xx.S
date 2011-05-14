@@ -36,63 +36,97 @@
 mpu_dpll_param:
 /* 12MHz */
 .word 50, 0, 0, 1
+.word  0, 0, 0, 0
 /* 13MHz */
 .word 600, 12, 0, 1
+.word   0,  0, 0, 0
 /* 19.2MHz */
 .word 125, 3, 0, 1
+.word   0, 0, 0, 0
 /* 26MHz */
 .word 300, 12, 0, 1
+.word 300, 12, 0, 4 /* ARM@150MHz Low-power conf. used when battery is DEAD */
 /* 38.4MHz */
 .word 125, 7, 0, 1
+.word   0, 0, 0, 0
 
 iva_dpll_param:
 /* 12MHz */
 .word 130, 2, 0, 1
+.word   0, 0, 0, 0
 /* 13MHz */
 .word 40, 0, 0, 1
+.word  0, 0, 0, 0
 /* 19.2MHz */
 .word 325, 11, 0, 1
+.word   0,  0, 0, 0
 /* 26MHz */
 .word 20, 0, 0, 1
+.word 20, 0, 0, 2 /* Low power config used when battery is DEAD */
 /* 38.4MHz */
 .word 325, 23, 0, 1
+.word   0,  0, 0, 0
 
 #if defined(PRCM_CLK_CFG2_400MHZ)
 
 core_dpll_param:
 /* 12MHz */
 .word 100, 2, 0, 1
+.word   0, 0, 0, 0
 /* 13MHz */
 .word 400, 12, 0, 1
+.word   0,  0, 0, 0
 /* 19.2MHz */
 .word 375, 17, 0, 1
+.word   0,  0, 0, 0
 /* 26MHz */
 .word 200, 12, 0, 1
+.word   0,  0, 0, 0
 /* 38.4MHz */
 .word 375, 35, 0, 1
+.word   0,  0, 0, 0
 
 /* for 3621 running @ 165Mhz as OMAP34xx processors */
-#elif defined(PRCM_CLK_CFG2_332MHZ)
+#elif (defined(PRCM_CLK_CFG2_332MHZ) || defined (CONFIG_ENCORE_1GHZ_SWITCH))
 
 core_dpll_param:
 /* 12MHz */
 .word M_12,N_12,FSEL_12,M2_12
-
+.word    0,   0,     0, 0
 /* 13MHz */
 .word M_13,N_13,FSEL_13,M2_13
-
+.word    0,   0,      0,   0
 /* 19.2MHz */
 .word M_19p2,N_19p2,FSEL_19p2,M2_19p2
-
+.word      0,     0,        0,      0
 /* 26MHz */
 .word M_26,N_26,FSEL_26,M2_26
-
+.word    0,   0,      0,    0
 /* 38.4MHz */
 .word M_38p4,N_38p4,FSEL_38p4,M2_38p4
-
+.word      0,      0,       0,      0
 #else
 #error "Undefined memory speed"
 #endif /* PRCM_CLK_CFG2_* */
+
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+core_dpll_param_3622:
+/* 12MHz */
+.word 100, 2, 0, 1
+.word   0, 0, 0, 0
+/* 13MHz */
+.word 400, 12, 0, 1
+.word   0,  0, 0, 0
+/* 19.2MHz */
+.word 375, 17, 0, 1
+.word   0,  0, 0, 0
+/* 26MHz */
+.word 200, 12, 0, 1
+.word   0,  0, 0, 0
+/* 38.4MHz */
+.word 375, 35, 0, 1
+.word   0,  0, 0, 0
+#endif
 
 
 per_dpll_param:

@@ -130,11 +130,21 @@ static uint16_t VFSOC = 0;
 
 #define DEBUG(x...) printf(x)
 #define CAPACITY	0x205C			//4142.59621mAh measured by Maxim
-#define DEF_VEMPTY      0x7D5A			//default POR value specified by Maxim due to an errata issue
+#define DEF_VEMPTY      0x7D5A	//default POR value specified by Maxim due to an errata issue
 #define CONFIG 		0x2210 // provided by Maxim
 #define FILTERCFG	0x87A4 // provided by Maxim
 #define RELAXCFG	0x083B // provided by maxim
 #define LEARNCFG	0x2406 // provided by Maxim to adjust FullCap only when relaxed
+
+#define TEMPLIM		0x2305 // hard POR value
+#define MISCCFG		0x0810 // hard POR value -- and with 0xCC1F
+#define MISCCFG_MASK	0xCC1F
+#define TGAIN		0xE3E1 // hard POR value
+#define TOFF		0x290E // hard POR value
+#define CGAIN		0x4000 // hard POR value
+#define COFF		0x0000 // hard POR value
+#define FCTC		0x05E0 // hard POR value
+
 
 #define	 MAX17042_STATUS		0x00
 #define	 MAX17042_RemCapREP		0x05
@@ -151,12 +161,19 @@ static uint16_t VFSOC = 0;
 #define	 MAX17042_Version		0x21
 #define	 MAX17042_FullCAPNom		0x23
 #define	 MAX17042_TempNom		0x24
+#define  MAX17042_TempLim		0x25
 #define  MAX17042_LearnCFG		0x28
 #define	 MAX17042_RelaxCFG		0x2A
 #define	 MAX17042_FilterCFG		0x29
+#define  MAX17042_MiscCFG		0x2B
+#define  MAX17042_TGAIN			0x2C
+#define  MAX17042_TOFF			0x2D
+#define  MAX17042_CGAIN			0x2E
+#define  MAX17042_COFF			0x2F
 #define	 MAX17042_SOCempty		0x33
 #define	 MAX17042_FullCap0  		0x35
 #define	 MAX17042_Iavg_empty		0x36
+#define  MAX17042_FCTC			0x37
 #define	 MAX17042_RCOMP0		0x38
 #define	 MAX17042_TempCo		0x39
 #define	 MAX17042_Empty_TempCo		0x3A
@@ -225,6 +242,69 @@ static int max17042_check_init_config(void)
     if ( buf != CAPACITY ) 
 	return 1;
 
+    MAX_READ( MAX17042_Vempty, (u8*)&buf);
+    DEBUG("uboot verify: %02x Vempty is %04x ; should be %04x\n", 
+	    MAX17042_Vempty, buf, DEF_VEMPTY);
+
+    if ( buf != DEF_VEMPTY ) 
+	return 1;
+
+    buf=0;
+    MAX_READ(MAX17042_TempLim, (uchar*)&buf);
+    DEBUG("uboot verify: %02x TEMPLIM is %04x ; should be %04x\n", 
+	    MAX17042_TempLim, buf, TEMPLIM);
+
+    if ( buf != TEMPLIM )
+	return 1;
+
+    buf=0;
+    MAX_READ(MAX17042_MiscCFG, (uchar*)&buf);
+    DEBUG("uboot verify: %02x MiscCFG is %04x ; should be %04x & %04x\n", 
+	    MAX17042_MiscCFG, buf, MISCCFG, MISCCFG_MASK );
+
+    if ( (buf & MISCCFG_MASK) != (MISCCFG  & MISCCFG_MASK)  )
+	return 1;
+
+    buf=0;
+    MAX_READ(MAX17042_TGAIN, (uchar*)&buf);
+    DEBUG("uboot verify: %02x TGAIN is %04x ; should be %04x\n", 
+	    MAX17042_TGAIN, buf, TGAIN);
+
+    if ( buf != TGAIN )
+	return 1;
+
+    buf=0;
+    MAX_READ(MAX17042_TOFF, (uchar*)&buf);
+    DEBUG("uboot verify: %02x TOFF is %04x ; should be %04x\n", 
+	    MAX17042_TOFF, buf, TOFF);
+
+    if ( buf != TOFF )
+	return 1;
+
+    buf=0;
+    MAX_READ(MAX17042_CGAIN, (uchar*)&buf);
+    DEBUG("uboot verify: %02x CGAIN is %04x ; should be %04x\n", 
+	    MAX17042_CGAIN, buf, CGAIN);
+
+    if ( buf != CGAIN )
+	return 1;
+
+    buf=0;
+    MAX_READ(MAX17042_COFF, (uchar*)&buf);
+    DEBUG("uboot verify: %02x COFF is %04x ; should be %04x\n", 
+	    MAX17042_COFF, buf, COFF);
+
+    if ( buf != COFF )
+	return 1;
+
+    buf=0;
+    MAX_READ(MAX17042_FCTC, (uchar*)&buf);
+    DEBUG("uboot verify: %02x FCTC is %04x ; should be %04x\n", 
+	    MAX17042_FCTC, buf, FCTC);
+
+    if ( buf != FCTC )
+	return 1;
+
     return 0;
 }
 
@@ -235,6 +315,7 @@ static int max17042_init_config(void)
 	static const u16 filtercfg = FILTERCFG;
 	static const u16 relaxcfg = RELAXCFG; 		
 	static const u16 learncfg = LEARNCFG; 		
+	static const u16 vempty = DEF_VEMPTY;
 		   
         err =MAX_WRITE(MAX17042_CONFIG, (uchar*)&config);	
         if ( err != 0 ) {
@@ -263,6 +344,13 @@ static int max17042_init_config(void)
         	return err;
         }
         // DEBUG("LearnCFG = 0x%04x\n", learncfg);
+
+        err =MAX_WRITE(MAX17042_Vempty, (uchar*)&vempty);	
+        if ( err != 0 ) {
+        	DEBUG( "write err Vempty\n");
+        	return err;
+        }
+        // DEBUG("Vempty = 0x%04x\n", vempty);
 
 	return max17042_check_init_config();
 }
@@ -506,7 +594,11 @@ int max17042_soft_por(void)
 
 //	DEBUG("Soft POR : attempting unlock\n");
 	max17042_lock_model();
-	max17042_clear_POR();
+
+	buf = 0;
+	MAX_WRITE(MAX17042_STATUS, (uchar*)&buf); // clear all Status
+	// note: clear POR bit is not enough here
+	udelay(1000);
 
 	MAX_READ(MAX17042_STATUS, (uchar*)&buf);
 	if ( buf != 0 )
@@ -829,9 +921,6 @@ int max17042_init(void)
 	is_power_on_rst();
 	if ( is_power_on ) {
 		DEBUG("MAX17042+UBOOT:POR detected!\n");
-
-		max17042_soft_por();
-
 	} else {
 		DEBUG("MAX17042+UBOOT:WARM BOOT    \n");
 	}
@@ -853,12 +942,18 @@ int max17042_init(void)
 			*savestorep++ = *bufp++;
 		}
 
-#define MIN_CAP_AGING (0.25)   // at most allow 25% of design capacity before rejecting
+#define MIN_CAP_AGING (0.25)   // allow no less than 25% of design capacity before rejecting
+#define MAX_CAP_AGING (1.3)   // reject history capacity if it seems overly big
+#define MIN_CAPNOM_AGING (0.25)   // allow no less than 25% of nominal design capacity before rejecting
+#define MAX_CAPNOM_AGING (1.5)   // reject history capacity if it seems overly big
 
-	    if ( save_store.val_FullCAP < (uint16_t)(CAPACITY*MIN_CAP_AGING) )
+	    if ( (save_store.val_FullCAP < (uint16_t)(CAPACITY*MIN_CAP_AGING)) ||
+		 (save_store.val_FullCAP > (uint16_t)(CAPACITY*MAX_CAP_AGING)) ||
+	         (save_store.val_FullCAPNom < (uint16_t)(CAPACITY*MIN_CAPNOM_AGING)) ||
+		 (save_store.val_FullCAPNom > (uint16_t)(CAPACITY*MAX_CAPNOM_AGING)) )
 		{
-		printf("Resetting battery defaults (CAPACITY 0x%x < 0x%x)\n",
-		    save_store.val_FullCAP, (uint16_t)(CAPACITY*MIN_CAP_AGING) );
+		printf("Resetting battery defaults due to faulty CAPACITY (0x%x, 0x%x)\n",
+		    save_store.val_FullCAP, save_store.val_FullCAPNom);
 
 		is_history_exist = 0;
 		}
@@ -872,12 +967,6 @@ int max17042_init(void)
 	save_store.val_DesignCap = CAPACITY; 	
 
 	i2c_init(100, 0x36);	//no need
-	
-	MAX17042_DUMPREG( MAX17042_Version );
-	MAX17042_DUMPREG( MAX17042_DesignCap );
-	MAX17042_DUMPREG( MAX17042_OCV );
-	MAX17042_DUMPREG( MAX17042_FSTAT );
-	MAX17042_DUMPREG( MAX17042_SOCvf );
 
 	if ( !is_power_on )
 	{
@@ -902,6 +991,12 @@ int max17042_init(void)
 	//1. Delay 500ms
 	udelay( 500 * 1000 );
 	
+	MAX17042_DUMPREG( MAX17042_Version );
+	MAX17042_DUMPREG( MAX17042_DesignCap );
+	MAX17042_DUMPREG( MAX17042_OCV );
+	MAX17042_DUMPREG( MAX17042_FSTAT );
+	MAX17042_DUMPREG( MAX17042_SOCvf );
+
 	//2. Init Configuration
 	max17042_init_config();
 

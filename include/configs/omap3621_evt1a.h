@@ -40,6 +40,7 @@
 #define CONFIG_3621EVT1A	        1    /* for specific IEC configuration	*/
 #define CONFIG_SDRAM_HYNIX_SAMSUNG      1    /* Samsung or Hynix memory DDR */
 #define CONFIG_FASTBOOT         1    /* Enable Fastboot support for Android */
+#define CONFIG_ENCORE_1GHZ_SWITCH 1 /* enable platform identification: 3621 or 3622 and enable DDR@200MHz*/
 #include <asm/arch/cpu.h>        /* get chip and board defs */
 
 /* Clock Defines */
@@ -47,7 +48,6 @@
 
 #define V_SCLK			(V_OSCK >> 0) /* PRM_CLKSRC_CTRL[SYSCLKDIV] is divider 1 in cpu/omap3/clock.c */
 
-#define PRCM_CLK_CFG2_332MHZ  1         /* VDD2=1.2v - 166MHz DDR */
 #define PRCM_PCLK_OPP2        1        /* ARM=500MHz - VDD1=1.20v */
 
 /* PER clock options, only uncomment 1 */
@@ -203,35 +203,6 @@
 
 //This can be used as loading address for gas gauge history data
 #define LOAD_ADDRESS		0x81C00000
-/*
-#define CONFIG_EXTRA_ENV_SETTINGS		\
-"loadaddr=0x81c00000\0"			\
-"rdloadaddr=0x81f00000\0"			\
-"console=ttyS0,115200n8\0"			\
-"mmcroot=/dev/mmcblk0p2\0"			\
-"argsmmc1=setenv bootargs console=${console} androidboot.console=ttyS0 "\
-		"root=${mmcroot} rootwait rw "	\
-		"init=/init videoout=omap24xxvout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y omapfb.vram=0:5M "			\
-		"androidboot.hardware=\0"		 	\
-"argsmmc2=setenv bootargs console=${console} androidboot.console=ttyS0 "  \
-                "initrd rw "     \
-                "init=/init videoout=omap24xxvout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y omapfb.vram=0:5M "			\
-		"androidboot.hardware=\0"  			\ 
-"bootmmc1=mmcinit 0; fatload mmc 0 ${loadaddr} uImage; bootm ${loadaddr}\0"	\
-"bootmmc2=mmcinit 1; fatload mmc 1 ${loadaddr} uImage; fatload mmc 1 ${rdloadaddr} uRamdisk; bootm ${loadaddr} ${rdloadaddr}\0"					\
-"autoboot=if mmc init 0; then" 			\
-		" run argsmmc1;" 		\
-		" run bootmmc1;" 		\
-	" else"					\
-	" run argsmmc2;"			\
-	" run bootmmc2;"			\
-//		" run loaduimage;" 		\
-//		" run mmcboot;" 		\
-//	" else run nandboot;"			\
-	" fi;\0"				\
-
-#define CONFIG_BOOTCOMMAND "run autoboot"
-*/
 
 #define CONFIG_BOOTCOMMAND "run autodetectmmc; run readtokens; run checkbootcount; run checkrom; run checkupdate; run checkbcb; run ${bootvar}"
 //#define CONFIG_BOOTARGS "console=ttyS0,115200n8 root=/dev/mmcblk0p2 rw rootdelay=1 mem=256M init=/init"
@@ -249,13 +220,13 @@
 "bootvar=normalboot" \
 	"\0" \
 \
-"commonbootargs=console=ttyS0,115200n8 androidboot.console=ttyS0 initrd rw init=/init videoout=omap24xxvout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y omap_vout_mod.video2_numbuffers=6 omap_vout_mod.vid2_static_vrfb_alloc=y omapfb.vram=0:8M no_console_suspend" \
+"commonbootargs=console=ttyO0,115200n8 androidboot.console=ttyO0 initrd rw init=/init videoout=omap24xxvout omap_vout_mod.video1_numbuffers=6 omap_vout_mod.vid1_static_vrfb_alloc=y omap_vout_mod.video2_numbuffers=6 omap_vout_mod.vid2_static_vrfb_alloc=y omapfb.vram=0:8M no_console_suspend" \
 	"\0" \
 \
 "recoveryboot=\
 echo Booting into recovery mode;\
 setenv bootargs $commonbootargs;\
-mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uRecImg; fatload mmc $mmcbootdev 0x81f00000 uRecRam; bootm 0x81c00000 0x81f00000" \
+mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uRecImg; fatload mmc $mmcbootdev 0x82000000 uRecRam; bootm 0x81c00000 0x82000000" \
 	"\0" \
 \
 "normalboot=\
@@ -268,7 +239,7 @@ setenv bootargs $commonbootargs;\
 mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uImage; fatload mmc $mmcbootdev 0x81f00000 uRamdisk; bootm 0x81c00000 0x81f00000" \
 	"\0" \
 \
-"autodetectmmc=if itest.s ${bootdevice} -eq \"SD\"; then\
+"autodetectmmc=if itest.s ${bootdevice} == \"SD\"; then\
  setenv mmcbootdev 0;\
  setenv mmcromdev 0;\
 else\
@@ -300,8 +271,8 @@ fi" \
    echo Forced to boot into recovery mode for Factory Fallback; \
    mw.b 0x81c00000 0 0x200;\
    cp.s \"boot-recovery\" 0x81c00000 0xd;\
-   cp.s \"recovery --update_package=MISC:factory.zip\" 0x81c00040 0x2b;\
-   mw.b 0x81c00048 0xa 1;\
+   cp.s \"recovery --restore=factory --update_package=MISC:factory.zip\" 0x81c00040 0x3d;\
+   mw.b 0x81c00048 0xa 1; mw.b 0x81c0005a 0xa 1;\
    fatsave mmc ${mmcromdev}:2 0x81c00000 BCB 0x200;\
    mw.l 0x81c00000 0 1;\
    fatsave mmc ${mmcromdev}:2 0x81c00000 devconf/BootCnt 4;\
@@ -340,8 +311,14 @@ if itest ${forcerecovery} -eq 2; then \
   run bcbreset; \
   setenv bootvar recoveryboot;\
 fi;  \
-if fatload mmc ${mmcromdev}:2 0x81c00000 BCB 0x1000 &&\
- itest.b *0x81c00040 -ne 0 &&\
+fatload mmc ${mmcromdev}:2 0x81c00000 BCB 0x1000;\
+if itest.l $? -ne 0; then\
+  echo Missing BCB forces recovery mode;\
+  setenv bootvar recoveryboot;\
+elif itest.l 0x$filesize -lt 0x200; then\
+  echo Empty BCB forces recovery mode;\
+  setenv bootvar recoveryboot;\
+elif itest.b *0x81c00040 -ne 0 &&\
  itest.s *0x81c00040 == \"recovery\"; then\
   echo BCB forces recovery mode;\
   setenv bootvar recoveryboot;\
@@ -366,12 +343,16 @@ fi" \
 \
 "checkrom=mmcinit ${mmcromdev};\
 fatload mmc ${mmcromdev}:2 0x81c00000 devconf/DeviceID 1;\
-if itest.l $? -ne 0; then\
+setenv badrom $?;\
+fatload mmc ${mmcromdev}:2 0x81c00000 devconf/BootCnt 4;\
+if itest.l $? -ne 0 ||\
+   itest.l 0x$filesize -ne 0x4 ||\
+   itest.l $badrom -ne 0; then\
  echo Forced to boot into recovery mode for ROM restore; \
  mw.b 0x81c00000 0 0x200;\
  cp.s \"boot-recovery\" 0x81c00000 0xd;\
- cp.s \"recovery --update_package=BOOT:romrestore.zip\" 0x81c00040 0x2e;\
- mw.b 0x81c00048 0xa 1;\
+ cp.s \"recovery --restore=rom --update_package=BOOT:romrestore.zip\" 0x81c00040 0x3c;\
+ mw.b 0x81c00048 0xa 1; mw.b 0x81c00056 0xa 1;\
  fatsave mmc ${mmcromdev}:2 0x81c00000 BCB 0x200;\
 fi" \
 	"\0" \

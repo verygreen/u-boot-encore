@@ -340,8 +340,19 @@ static __inline__ int abortboot(int bootdelay)
 
 #define 	ENCORE_BOOTUP_THRESHOLD	10
 
+#define prcm_write(__reg__, __value__)   *((volatile unsigned int *)(__reg__)) = (__value__)
+#define prcm_read(__reg__)               *((volatile unsigned int *)(__reg__))
+
+#define CM_CLKEN_PLL_IVA2    0x48004004
+#define CM_CLKEN_PLL_MPU     0x48004904
+#define CM_AUTOIDLE_PLL_MPU  0x48004934
+
+
 extern int max17042_init(void);
 extern int max17042_soc( uint16_t* val );
+extern void mpu_dpll_init_36XX(int , int);
+extern void iva_dpll_init_36XX(int, int);
+
 
 #endif
 /****************************************************************************/
@@ -361,7 +372,7 @@ extern int max17042_soc( uint16_t* val );
 /* Android gives the "low battery dialog" at 10% so we will prevent bootup if RSOC < 10% */
 /* We don't want to prevent boot-up until user has seen that dialog. Android really shuts off at 5%. */
 
-#define 	ENCORE_BOOTUP_THRESHOLD_VOLTAGE 3700000    /*micro volts*/
+#define 	ENCORE_BOOTUP_THRESHOLD_VOLTAGE 3620000    /*micro volts*/
 
 #define 	ENCORE_BATT_TEMP_THRESHOLD	45000000   /*set 45 Celcius as the current temp threshold*/
 
@@ -422,10 +433,9 @@ static void power_off(void)
 }
 extern int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[]);
 extern void lcd_enable(void);
+extern void lcd_disable(void);
 extern void bitmap_plot (int x, int y,uchar which);
 extern void lcd_adjust_brightness(int level);
-extern void boxer_disable_panel(void);
-extern void boxer_init_panel(void);
 extern void encore_button_rtc_ack(void);
 
 /*this is where we handle dead battery scenario. We spin idle and wait for battery to be charged over
@@ -582,7 +592,7 @@ static void Encore_boot(void)
 	    	   power_off();
 	   }
    }
-   
+  
 	ui_on=1;
 	if(charger_type){
        /*enable the charge*/		 
@@ -592,25 +602,21 @@ static void Encore_boot(void)
 		/*charger is in,we enter dead battery charging here*/
 			udelay(1000*1000);
 		
-			/*USB charger,dim the icon slowly and turn BL Off*/
-			if(charger_type==2)
-				 {
-				 		for(i=0;i<4;i++)
-				 			{
-				 				udelay(2000*1000);
-				 				lcd_adjust_brightness(100-20*i);
-				 			}
-				 	 boxer_disable_panel();
-				 	 ui_on=0;
-				 }
-	    gpio_pin_init(14,GPIO_INPUT,GPIO_LOW); 
+			/* dim the icon slowly and turn BL Off IN ALL CASES */
+		    for(i=0;i<4;i++) {
+		        udelay(2000*1000);
+				lcd_adjust_brightness(40-8*i);
+			}
 		
-	    /*need SOC > 11% and VOL > 3.8V*/
-	    while((!cap_ok) || (!vol_ok))
-	    {
-	    	 /*if user hold the PWR button, we display the ICON for 2 seconds and then off*/
-	       if( charger_type==2 )
-	    	 { 	
+            lcd_adjust_brightness(0);
+            lcd_disable();
+			ui_on=0;
+	    
+            gpio_pin_init(14,GPIO_INPUT,GPIO_LOW); 
+		
+    	    /*need SOC > 11% and VOL > 3.8V*/
+	        while((!cap_ok) || (!vol_ok)) {
+        	 /*if user hold the PWR button, we display the ICON for 2 seconds and then off*/
 	    	   if(gpio_pin_read(14))
 	    	 	{
 	    	  			
@@ -618,25 +624,26 @@ static void Encore_boot(void)
 						/*display the battery icon and dim off*/	    	  			
 	    	  			if(!ui_on)
 	    	  			{
-	    	  			boxer_init_panel();
+	    	  			lcd_enable();
 	    	  			lcd_adjust_brightness(40);
 	    	  			udelay(3000*1000);
-	    	  			boxer_disable_panel();
+                        lcd_adjust_brightness(0);
+	    	  			lcd_disable();
 	    	  			ui_on=0;
 	    	  			}
 	    	  			
 	    	  	}
 	    	 
-	    	 }	
 	    	 /*make sure charger is present since we dont have IRQ ready in boot*/
 	    	 if( gpio_pin_read(114) && gpio_pin_read(115) )
 	    	 {
 	    	 /*warn user shutting down before LCD goes off*/
 	    	 if(!ui_on)
-	    	 		{
-	    	 				boxer_init_panel();
-	    	 				ui_on=1;
-	    	 		}
+			{
+			lcd_enable();
+			lcd_adjust_brightness(40);
+			ui_on=1;
+			}
 	    	 lcd_clear(0,0,0,0);
 	    	 bitmap_plot (928,140,2);
 	    	 udelay( 3000 * 1000 );
@@ -659,14 +666,17 @@ static void Encore_boot(void)
        }
        /*finished low battery charging or we have a healthy battery already*/
        printf("BOOTING!\n");
+       if(!ui_on) {
+	   lcd_enable();
+	   lcd_adjust_brightness(80);
+	   ui_on=1;
+	   }
+
        if( !boot_normal)
        {
-				if(!ui_on)       		
-       			boxer_init_panel();
-       		lcd_adjust_brightness(80);
-       		printf("re-enabling LCD-BL after usb charging!\n ");
-       		lcd_clear(0,0,0,0);
-       		 bitmap_plot (1008,133,0);
+	   printf("re-enabling LCD-BL after usb charging!\n ");
+	   lcd_clear(0,0,0,0);
+	   bitmap_plot (1008,133,0);
        }
     }
        /*no charger and low battery*/
@@ -682,11 +692,7 @@ static void Encore_boot(void)
 		if (user_req) {
 			for (i = 0; i < FACTORY_RESET_LOOP; i++)
 			{
-				int ret;
-				unsigned char key;
-				
-				key = 0;
-				ret = tps65921_keypad_keys_pressed(&key);
+				tps65921_keypad_keys_pressed(&key_pad); 
 				if (!(key_pad & HOME_KEY)) {
 					user_req = 0;
 					printf("HOME_KEY held for less than %d Sec\n", FACTORY_RESET_DELAY);

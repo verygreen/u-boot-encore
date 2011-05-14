@@ -30,6 +30,13 @@
 #include <environment.h>
 #include <command.h>
 
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+
+#define ENCORE_NO_1GHZ_SUPPORT() \
+     (!read_board_1GHz_support() || ((__raw_readl(CONTROL_SCALABLE_OMAP_STATUS) & 1) == 1))
+
+#endif
+
 /****** DATA STRUCTURES ************/
 
 /* Only One NAND allowed on board at a time. 
@@ -137,6 +144,17 @@ static u32 gpmc_enet[GPMC_MAX_REG] = {
 	LAB_ENET_GPMC_CONFIG5,
 	LAB_ENET_GPMC_CONFIG6, 0
 };
+
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+static u32 gpmc_enet_200[GPMC_MAX_REG] = {
+	LAB_ENET_GPMC_CONFIG1_200,
+	LAB_ENET_GPMC_CONFIG2_200,
+	LAB_ENET_GPMC_CONFIG3_200,
+	LAB_ENET_GPMC_CONFIG4_200,
+	LAB_ENET_GPMC_CONFIG5_200,
+	LAB_ENET_GPMC_CONFIG6_200, 0
+};
+#endif
 #endif
 
 #ifdef CONFIG_3430ZOOM2
@@ -158,6 +176,17 @@ static u32 gpmc_sibnor[GPMC_MAX_REG] = {
 	SIBNOR_GPMC_CONFIG4,
 	SIBNOR_GPMC_CONFIG5,
 	SIBNOR_GPMC_CONFIG6, 0
+};
+#endif
+
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+static u32 gpmc_pismo2_200[GPMC_MAX_REG] = {
+	P2_GPMC_CONFIG1_200,
+	P2_GPMC_CONFIG2_200,
+	P2_GPMC_CONFIG3_200,
+	P2_GPMC_CONFIG4_200,
+	P2_GPMC_CONFIG5_200,
+	P2_GPMC_CONFIG6_200, 0
 };
 #endif
 
@@ -189,6 +218,17 @@ static u32 gpmc_m_nand[GPMC_MAX_REG] = {
 	M_NAND_GPMC_CONFIG5,
 	M_NAND_GPMC_CONFIG6, 0
 };
+
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+static u32 gpmc_m_nand_200[GPMC_MAX_REG] = {
+	M_NAND_GPMC_CONFIG1_200,
+	M_NAND_GPMC_CONFIG2_200,
+	M_NAND_GPMC_CONFIG3_200,
+	M_NAND_GPMC_CONFIG4_200,
+	M_NAND_GPMC_CONFIG5_200,
+	M_NAND_GPMC_CONFIG6_200, 0
+};
+#endif
 
 /********** Functions ****/
 
@@ -363,13 +403,45 @@ next_mem_type:
 
     /* Set ACTIM values */
     if (cs0) {
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+		 /* check ISP2P of CONTROL_FEATURE_OMAP_STATUS register for 3621 vs 3622 detection */
+		if ( ENCORE_NO_1GHZ_SUPPORT() ) {
+			__raw_writel(SDP_SDRC_ACTIM_CTRLA_0, SDRC_ACTIM_CTRLA_0);
+			__raw_writel(SDP_SDRC_ACTIM_CTRLB_0, SDRC_ACTIM_CTRLB_0);
+		} else {
+			__raw_writel(SDP_SDRC_ACTIM_CTRLA_0_200, SDRC_ACTIM_CTRLA_0);
+			__raw_writel(SDP_SDRC_ACTIM_CTRLB_0_200, SDRC_ACTIM_CTRLB_0);
+		}
+#else
 		__raw_writel(SDP_SDRC_ACTIM_CTRLA_0, SDRC_ACTIM_CTRLA_0);
 		__raw_writel(SDP_SDRC_ACTIM_CTRLB_0, SDRC_ACTIM_CTRLB_0);
+#endif
 	} else {
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+		/* check ISP2P of CONTROL_FEATURE_OMAP_STATUS register for 3621 vs 3622 detection */
+		if ( ENCORE_NO_1GHZ_SUPPORT() ) {
+			__raw_writel(SDP_SDRC_ACTIM_CTRLA_0, SDRC_ACTIM_CTRLA_1);
+			__raw_writel(SDP_SDRC_ACTIM_CTRLB_0, SDRC_ACTIM_CTRLB_1);
+		} else {
+			__raw_writel(SDP_SDRC_ACTIM_CTRLA_0_200, SDRC_ACTIM_CTRLA_1);
+			__raw_writel(SDP_SDRC_ACTIM_CTRLB_0_200, SDRC_ACTIM_CTRLB_1);
+		}
+#else
 		__raw_writel(SDP_SDRC_ACTIM_CTRLA_0, SDRC_ACTIM_CTRLA_1);
 		__raw_writel(SDP_SDRC_ACTIM_CTRLB_0, SDRC_ACTIM_CTRLB_1);
+#endif
+
 	}
+
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+	/* check ISP2P of CONTROL_FEATURE_OMAP_STATUS register for 3621 vs 3622 detection */
+	if ( ENCORE_NO_1GHZ_SUPPORT() )
+		__raw_writel(SDP_SDRC_RFR_CTRL, SDRC_RFR_CTRL_0 + offset);
+	else
+		__raw_writel(SDP_SDRC_RFR_CTRL_200, SDRC_RFR_CTRL_0 + offset);
+#else
 	__raw_writel(SDP_SDRC_RFR_CTRL, SDRC_RFR_CTRL_0 + offset);
+#endif
 
 	/* init sequence for mDDR/mSDR using manual commands (DDR is different) */
 	__raw_writel(CMD_NOP, SDRC_MANUAL_0 + offset);
@@ -462,7 +534,16 @@ void gpmc_init(void)
 	gpmc_config[0] |= mux;
 #elif defined(CONFIG_3430ZOOM2)
 	/* LAN9221 is on CS 7 on Zoom2 */
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+
+        /* check ISP2P of CONTROL_FEATURE_OMAP_STATUS register for 3621 vs 3622 detection */
+	if ( ENCORE_NO_1GHZ_SUPPORT() )
+		gpmc_config = gpmc_enet;
+	else
+		gpmc_config = gpmc_enet_200;
+#else
 	gpmc_config = gpmc_enet;
+#endif
 	gpmc_base = GPMC_CONFIG_CS0 + (7 * GPMC_CONFIG_WIDTH);	
 #else
 	/* LAN9x18 is on CS 1 on Zoom1 */
@@ -507,7 +588,15 @@ void gpmc_init(void)
 		case PISMO1_NAND:
 			base = PISMO1_NAND_BASE;
 			size = PISMO1_NAND_SIZE;
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+		        /* check ISP2P of CONTROL_FEATURE_OMAP_STATUS register for 3621 vs 3622 detection */
+			if ( ENCORE_NO_1GHZ_SUPPORT() )
+				gpmc_config = gpmc_m_nand;
+			else
+				gpmc_config = gpmc_m_nand_200;
+#else
 			gpmc_config = gpmc_m_nand;
+#endif
 			nand_cs_base = gpmc_base;
 			f_off = SMNAND_ENV_OFFSET;
 			is_nand = 1;
@@ -517,7 +606,16 @@ void gpmc_init(void)
 		case PISMO2_CS1:
 			base = PISMO2_BASE;
 			size = PISMO2_SIZE;
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+		        /* check ISP2P of CONTROL_FEATURE_OMAP_STATUS register for 3621 vs 3622 detection */
+			if ( ENCORE_NO_1GHZ_SUPPORT() )
+				gpmc_config = gpmc_pismo2;
+			else
+    		        	gpmc_config = gpmc_pismo2_200;
+#else
 			gpmc_config = gpmc_pismo2;
+#endif
+
 			gpmc_config[0] |= mux | TYPE_NOR | mwidth;
 			break;
 /* Either OneNand or Normal Nand at a time!! */

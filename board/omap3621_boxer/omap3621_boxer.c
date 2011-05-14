@@ -43,15 +43,14 @@ void eth_init(void *);
 u32 get_board_rev(void);
 extern int gpio_pin_read(u32 gpio_pin);
 
-enum hw_board_id {
-	NONE,
-	EVT1B = 0x2,
-	EVT2,
-	DVT,
-	PVT
-};
 
 #define MAKE_HW_BOARD_ID(id1, id2, id3) (id1 | (id2 << 1 ) | (id3 << 2 ))
+
+#define 	MUX_VAL(OFFSET,VALUE) \
+		    __raw_writew((VALUE), OMAP34XX_CTRL_BASE + (OFFSET));
+
+#define		CP(x)	(CONTROL_PADCONF_##x)
+
 
 /*******************************************************
  * Routine: delay
@@ -77,7 +76,7 @@ static const char * const arch_string(u32 mtype)
 
 static const char * const rev_string(u32 btype)
 {
-    switch (btype) {
+    switch (btype & BOARD_ENCORE_REV_MASK) {
     case BOARD_ENCORE_REV_EVT1A:
         return "EVT1A";
     case BOARD_ENCORE_REV_EVT1B:
@@ -103,6 +102,64 @@ static inline enum hw_board_id read_board_id(void)
     return bid;
 }
 
+static inline enum hw_product_id read_product_id(void)
+{
+    enum hw_product_id pid;
+
+
+    pid = MAKE_HW_BOARD_ID(gpio_pin_read(38),
+                            gpio_pin_read(112),
+                            gpio_pin_read(96));
+
+    return pid;
+}
+
+int has_3G_support(void) 
+{
+    DECLARE_GLOBAL_DATA_PTR;
+
+    return ( gd->bd->bi_board_revision & BOARD_FEATURE_3G );
+}
+
+// note: this can't be used in very early start-up routines (SRAM)
+static inline has_1GHz_support(void)
+{
+    DECLARE_GLOBAL_DATA_PTR;
+
+    return ( gd->bd->bi_board_revision & BOARD_FEATURE_1GHZ );
+}
+
+int read_board_1GHz_support(void)
+{
+    /* can't refer to gd and BOARD_FEATURE_1GHZ here, because this is also referenced by
+     * clock.c (prcm_init) which happens before SDRAM is ready
+     * MUX for gpios is already setup via s_init() called from lowlevel_init.S
+     */
+        int hwid2, hwid1;
+
+	static int have_executed = 0;
+	static int board_1G_support;
+
+
+	if ( !have_executed ) {
+	    gpio_t *gpio2_base = (gpio_t*)OMAP34XX_GPIO2_BASE;
+	    gpio_t *gpio4_base = (gpio_t*)OMAP34XX_GPIO4_BASE;
+
+	    sr32(CM_FCLKEN_PER, CLKEN_PER_EN_GPIO2_BIT, 1, 1);
+	    sr32(CM_ICLKEN_PER, CLKEN_PER_EN_GPIO2_BIT, 1, 1);
+	    sr32(CM_FCLKEN_PER, CLKEN_PER_EN_GPIO4_BIT, 1, 1);
+	    sr32(CM_ICLKEN_PER, CLKEN_PER_EN_GPIO4_BIT, 1, 1);
+
+	    hwid2 = (gpio2_base->datain & (1<<6));
+	    hwid1 = (gpio4_base->datain & (1<<16));
+
+	    have_executed = 1;
+	    board_1G_support = ((hwid1 != 0) || (hwid2 != 0));
+	}
+
+	return ( board_1G_support );
+}
+
 /*****************************************
  * Routine: board_init
  * Description: Early hardware init.
@@ -111,31 +168,38 @@ int board_init(void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
     enum hw_board_id bid;
+    enum hw_product_id pid;
 
-	gpmc_init();		/* in SRAM or SDRAM, finish GPMC */
+    gpmc_init();		/* in SRAM or SDRAM, finish GPMC */
+
 #if defined(CONFIG_3621EVT1A)
     gd->bd->bi_arch_number = MACH_TYPE_OMAP3621_EVT1A; /* Linux mach id */
-    bid = read_board_id(); 
+    
+    pid = read_product_id();
 
-    switch(bid) {
-        case NONE:
-            gd->bd->bi_board_revision = BOARD_ENCORE_REV_EVT1A;
-	        break;
-        case EVT1B:
-            gd->bd->bi_board_revision = BOARD_ENCORE_REV_EVT1B;
-            break;
-        case EVT2:
-            gd->bd->bi_board_revision = BOARD_ENCORE_REV_EVT2; 
-            break;
-        case DVT:
-            gd->bd->bi_board_revision = BOARD_ENCORE_REV_DVT; 
-            break;
-        case PVT:
-            gd->bd->bi_board_revision = BOARD_ENCORE_REV_PVT; 
-            break;
-        default:   
-            gd->bd->bi_arch_number = BOARD_ENCORE_REV_UNKNOWN;
-        }
+    switch(pid & HWID_PROD_MASK) {
+    case HWID_PROD_RAVE:
+    case HWID_PROD_ACCLAIM:
+        MUX_VAL(CP(ETK_D7_ES2 ), (IEN | PTU | DIS | M4)); /*GIO-21  MODEM_EN */
+        MUX_VAL(CP(GPMC_A1), (IDIS | PTD | DIS | M4)); /*GIO-34  MODEM_nON NOT PRESENT */	
+        MUX_VAL(CP(GPMC_D14), (IEN | PTU | DIS | M4)); /*GPMC_D14 GPIO50 misc I/O*/
+        MUX_VAL(CP(GPMC_D13), (IDIS  | PTD | DIS  | M4)); /* GPMC_D13 MODEM-USB-EN */
+    	MUX_VAL(CP(ETK_D9_ES2 ), (IDIS  | PTD | DIS  | M4)) /* GIO-23  HSUSB2_RSTn */
+
+    case HWID_PROD_CONDOR:
+	gd->bd->bi_board_revision |= BOARD_FEATURE_3G;
+    };
+
+    if ( read_board_1GHz_support() )
+	gd->bd->bi_board_revision |= BOARD_FEATURE_1GHZ;
+
+    switch(pid & HWID_PROD_MASK) {
+    case HWID_PROD_GOSSAMER:
+    case HWID_PROD_CONDOR:
+	gd->bd->bi_board_revision |= BOARD_FEATURE_EINK;
+    };
+
+    gd->bd->bi_board_revision |= (read_board_id() & BOARD_ENCORE_REV_MASK);
 
 #else
 	gd->bd->bi_arch_number = MACH_TYPE_OMAP3621_BOXER; /* Linux mach id*/
@@ -392,8 +456,10 @@ int misc_init_r(void)
 #ifdef CONFIG_DRIVER_OMAP34XX_I2C
 	unsigned char data;
    
-    printf("Hardware arch: %s rev: %s\n", 
+    printf("Hardware arch: %s %s %s rev: %s\n", 
             arch_string(gd->bd->bi_arch_number), 
+	    has_3G_support()	? "3G" : "WLAN",
+	    has_1GHz_support()	? "1GHz" : "800MHz",
             rev_string(gd->bd->bi_board_revision));
    	
 	extern int twl4030_init_battery_charging(void);
@@ -409,20 +475,33 @@ int misc_init_r(void)
 	i2c_write(0x4b, 0x46, 1, &data, 1);
 	printf("Power Button Active\n");
 
+    printf("Keep TP in reset \n");
+    gpio_pin_init(46, GPIO_OUTPUT, GPIO_HIGH);
 
+    printf("Keep Audio codec under reset \n");
+    gpio_pin_init(37, GPIO_OUTPUT, GPIO_LOW);
 
-	printf("Keep TP in reset \n");
-	gpio_pin_init(46, GPIO_OUTPUT, GPIO_HIGH);
+    printf("Power on Audio codec\n");
+    gpio_pin_init(103, GPIO_OUTPUT, GPIO_HIGH);
 
-        printf("Keep Audio codec under reset \n");
-        gpio_pin_init(37, GPIO_OUTPUT, GPIO_LOW);
+    printf("Take TP out of reset \n");
+    gpio_pin_init(46, GPIO_OUTPUT, GPIO_LOW);
 
-        printf("Power on Audio codec\n");
-        gpio_pin_init(103, GPIO_OUTPUT, GPIO_HIGH);
-      
-	printf("Take TP out of reset \n");
-	gpio_pin_init(46, GPIO_OUTPUT, GPIO_LOW);
+    /* Initialize the Modem-related GPIOs */
 
+    if (has_3G_support()) {
+        printf("Initializing Modem nRST\n");
+        gpio_pin_init(50, GPIO_INPUT, GPIO_HIGH);
+
+        printf("Initializing Modem ON\n");
+        gpio_pin_init(34, GPIO_OUTPUT, GPIO_HIGH);
+
+        printf("Initializing Modem nDISABLE\n");
+        gpio_pin_init(21, GPIO_INPUT, GPIO_HIGH);
+
+        printf("Initializing PHY enable\n");
+        gpio_pin_init(49, GPIO_OUTPUT, GPIO_HIGH);
+    }
 #endif
 	char *s = getenv("pbboot");
 	if (s) {
@@ -527,11 +606,6 @@ int dram_init(void)
 
 	return 0;
 }
-
-#define 	MUX_VAL(OFFSET,VALUE)\
-		__raw_writew((VALUE), OMAP34XX_CTRL_BASE + (OFFSET));
-
-#define		CP(x)	(CONTROL_PADCONF_##x)
 
 /*
  * IEN  - Input Enable
@@ -894,7 +968,6 @@ void set_muxconf_regs(void)
 {
 	MUX_EVT1A();
 }
-
 
 /******************************************************************************
  * Routine: get_boot_device()

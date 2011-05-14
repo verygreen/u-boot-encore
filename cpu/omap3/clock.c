@@ -56,7 +56,7 @@ struct dpll_per_param {
         unsigned int m2div;
 };
 typedef struct dpll_per_param dpll_per_param;
-#define MAX_SIL_INDEX	1
+#define MAX_SIL_INDEX	2
 
 #else
 
@@ -72,6 +72,15 @@ typedef struct dpll_param dpll_param;
 extern dpll_param * get_mpu_dpll_param(void);
 extern dpll_param * get_iva_dpll_param(void);
 extern dpll_param * get_core_dpll_param(void);
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+
+#define SUPPORTS_1GHZ()  \
+	( read_board_1GHz_support() && ((__raw_readl(CONTROL_SCALABLE_OMAP_STATUS) & 1) != 1) )
+
+
+extern dpll_param * get_core_dpll_param_3622(void);
+
+#endif
 extern dpll_param * get_per_dpll_param(void);
 
 /*************************************************************
@@ -171,7 +180,17 @@ static int get_silindex(void)
 
 static dpll_param *_get_core_dpll(int clk_index, int sil_index)
 {
-	dpll_param *ret = (dpll_param *)get_core_dpll_param();
+dpll_param *ret ;
+
+// 3622 vs 3621 switch and configure DPPL clock 200MHZ or 166MHZ
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+
+	if ( SUPPORTS_1GHZ() )
+		ret = (dpll_param *)get_core_dpll_param_3622();
+	else
+#endif
+		ret = (dpll_param *)get_core_dpll_param();
+
 	ret += (MAX_SIL_INDEX * clk_index) + sil_index;
 	return ret;
 }
@@ -206,7 +225,7 @@ static dpll_param *_get_iva_dpll(int clk_index, int sil_index)
 #define PER_M5_BITS 6
 #define PER_M6_BITS 6
 
-static void per_dpll_init_36XX(int clk_index)
+void per_dpll_init_36XX(int clk_index)
 {
 	dpll_per_param *per;
 
@@ -231,7 +250,7 @@ static void per_dpll_init_36XX(int clk_index)
 	wait_on_value(BIT1, 2, CM_IDLEST_CKGEN, LDELAY);
 }
 
-static void iva_dpll_init_36XX(int clk_index, int sil_index)
+void iva_dpll_init_36XX(int clk_index, int sil_index)
 {
 	dpll_param *iva;
 
@@ -250,7 +269,7 @@ static void iva_dpll_init_36XX(int clk_index, int sil_index)
 	wait_on_value(BIT0, 1, CM_IDLEST_PLL_IVA2, LDELAY);
 }
 
-static void mpu_dpll_init_36XX(int clk_index, int sil_index)
+void mpu_dpll_init_36XX(int clk_index, int sil_index)
 {
 	dpll_param *mpu;
 
@@ -398,7 +417,15 @@ void prcm_init(void)
 	wait_on_value(BIT0, 0, CM_IDLEST_PLL_MPU, LDELAY);
 
 	/* Getting the base address of Core DPLL param table*/
-	dpll_param_p = (dpll_param *)get_core_dpll_param();
+#if defined (CONFIG_ENCORE_1GHZ_SWITCH)
+
+	if ( SUPPORTS_1GHZ() )
+		dpll_param_p = (dpll_param *)get_core_dpll_param_3622();
+	else
+#endif
+		dpll_param_p = (dpll_param *)get_core_dpll_param();
+
+
 	/* Moving it to the right sysclk and ES rev base */
 	dpll_param_p = dpll_param_p + MAX_SIL_INDEX*clk_index + sil_index;
 	if(xip_safe){

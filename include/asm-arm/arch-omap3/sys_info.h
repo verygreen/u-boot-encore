@@ -61,11 +61,33 @@
 #define BOARD_OMAP3621_BOXER    0x10
 #define BOARD_OMAP3621_EVT1A    0x11
 
-#define BOARD_ENCORE_REV_EVT1A      0x1
-#define BOARD_ENCORE_REV_EVT1B      0x2
-#define BOARD_ENCORE_REV_EVT2       0x3
-#define BOARD_ENCORE_REV_DVT        0x4
-#define BOARD_ENCORE_REV_PVT        0x5
-#define BOARD_ENCORE_REV_UNKNOWN    0x6
+enum hw_board_id {
+BOARD_ENCORE_REV_EVT1A	= 1,
+BOARD_ENCORE_REV_EVT1B	= 2,
+BOARD_ENCORE_REV_EVT2	= 3,
+BOARD_ENCORE_REV_DVT 	= 4,
+BOARD_ENCORE_REV_PVT	= 5,
+BOARD_ENCORE_REV_MASK	= 0x7
+};
+
+enum hw_product_id {
+HWID_PROD_ENCORE	= 0,
+HWID_PROD_RAVE		= 1,
+HWID_PROD_APPLAUSE	= 2,
+HWID_PROD_ACCLAIM	= 3,
+HWID_PROD_GOSSAMER	= 4,
+HWID_PROD_CONDOR	= 5,
+HWID_PROD_MASK		= 0x7
+};
+
+
+enum board_feature {
+BOARD_FEATURE_3G	= 0x08,
+BOARD_FEATURE_1GHZ	= 0x10,
+BOARD_FEATURE_EINK	= 0x20,
+};
+
+extern int has_3G_support(void);
+extern int read_board_1GHz_support(void);
 
 #endif

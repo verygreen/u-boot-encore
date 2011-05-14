@@ -48,7 +48,7 @@
 
 #  define CLSEL1_EMU_VAL ((CORE_M3X2 << 16) | (PER_M6X2 << 24) | (0x0a50))
 
-#ifdef PRCM_CLK_CFG2_332MHZ
+#if (defined (PRCM_CLK_CFG2_332MHZ) || defined (CONFIG_ENCORE_1GHZ_SWITCH))
 # define M_12		0xA6
 # define N_12		0x05
 # define FSEL_12	0x07

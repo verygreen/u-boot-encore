@@ -150,7 +150,7 @@ extern vidinfo_t panel_info;
 
 #elif defined CONFIG_3621EVT1A
 
-#include <asm/arch-omap3/dss.h>
+#include <asm/arch/dss.h>
 
 #define LCD_BPP LCD_COLOR16
 

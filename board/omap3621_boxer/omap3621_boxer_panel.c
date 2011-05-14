@@ -81,6 +81,9 @@ int lcd_color_bg = 0;
 void *lcd_base;
 void *lcd_console_address;
 
+static int lcd_disabled;
+static void *lcd_set_base;
+
 short console_col;
 short console_row;
 
@@ -92,14 +95,14 @@ short console_row;
      
 void lcd_ctrl_init(void *lcdbase)
 {
-     
    sr32(CM_FCLKEN_DSS, 0, 32, FCK_DSS_ON);
-	sr32(CM_ICLKEN_DSS, 0, 32, ICK_DSS_ON);
+   sr32(CM_ICLKEN_DSS, 0, 32, ICK_DSS_ON);
     
-    udelay(200);
+   udelay(200);
   
-    omap3_dss_panel_config(&panel_info.dss_panel_config);
-    omap3_dss_mem_config(&panel_info.dss_panel_config, lcdbase);
+   omap3_dss_panel_config(&panel_info.dss_panel_config);
+   omap3_dss_mem_config(&panel_info.dss_panel_config, lcdbase);
+   lcd_set_base = lcdbase;
 }
 
 void lcd_setcolreg (ushort regno, ushort red, ushort green, ushort blue)
@@ -200,7 +203,6 @@ void disable_backlight(void)
     sr32(CM_ICLKEN_PER, 9, 1, 0x0); /* ICLKEN GPT8 */
 
     gpio_pin_write( GPIO_BACKLIGHT_EN_EVT2, 1 );
-
 }
 void lcd_adjust_brightness(int level)
 {
@@ -249,6 +251,10 @@ void boxer_init_panel(void)
 
 void lcd_enable(void)
 {
+    if (lcd_disabled) {
+        lcd_ctrl_init(lcd_set_base);
+    }
+
     gpio_pin_init(36, GPIO_OUTPUT, 1);
 
     // Wait one ms before sending down SPI init sequence
@@ -269,6 +275,7 @@ void lcd_enable(void)
     
     omap3_dss_enable();
     enable_backlight();
+    lcd_disabled = 0;
 }
 
 void lcd_disable(void)
@@ -284,7 +291,9 @@ void lcd_disable(void)
     MUX_VAL(CP(McBSP1_CLKR),    (IEN  | PTD | DIS | M1)) /*McSPI4-CLK*/ \
     MUX_VAL(CP(McBSP1_DX),      (IDIS | PTD | DIS | M1)) /*McSPI4-SIMO*/ \
     MUX_VAL(CP(McBSP1_DR),      (IEN  | PTD | DIS | M1)) /*McSPI4-SOMI*/\
-    MUX_VAL(CP(McBSP1_FSX),     (IDIS | PTD | DIS | M1)) /*McSPI4-CS0*/ \
+    MUX_VAL(CP(McBSP1_FSX),     (IDIS | PTD | DIS | M1)) /*McSPI4-CS0*/
+
+    lcd_disabled = 1;
 }
 
 void lcd_panel_disable(void)

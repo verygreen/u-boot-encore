@@ -14,8 +14,9 @@ if head=`git rev-parse --verify HEAD 2>/dev/null`; then
 	if  [ "`git name-rev --tags HEAD`" = "HEAD undefined" ]; then
 		printf '%s%s' -g `echo "$head" | cut -c1-8`
 	else
-		# The head is tagged, use the tag name
-		printf '%s%s' '-' `git name-rev --tags HEAD --name-only`
+		# The head is tagged; use the most recent tag name
+		printf '-'
+		git show-ref --tags --dereference | grep -B 1 "^$head" | sed -n '$s@^.*/@@p' | tr -d '\n'
 	fi
 
 	# Are there uncommitted changes?
