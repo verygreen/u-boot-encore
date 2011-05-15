@@ -384,7 +384,7 @@ extern void iva_dpll_init_36XX(int, int);
 #define RESET_SECOND (1000000 / RESET_TICK)
 
 // HOME * PWR need to be held for this period
-#define FACTORY_RESET_DELAY 4
+#define FACTORY_RESET_DELAY 3
 
 #define FACTORY_RESET_LOOP (RESET_SECOND * FACTORY_RESET_DELAY)
 
@@ -699,9 +699,10 @@ static void Encore_boot(void)
 					break;
 				}
 					
-				if (!gpio_pin_read(14)) {
+				/* Only require power to be held for half of the time */
+				if ((i < FACTORY_RESET_LOOP/2) && !gpio_pin_read(14)) {
 					user_req = 0;
-					printf("POWER_KEY held for less than %d Sec\n", FACTORY_RESET_DELAY);					
+					printf("POWER_KEY held for less than %d/2 Sec\n", FACTORY_RESET_DELAY);					
 					break;
 				}
 				

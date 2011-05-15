@@ -220,7 +220,7 @@
 "bootvar=normalboot" \
 	"\0" \
 \
-"commonbootargs=console=ttyO0,115200n8 androidboot.console=ttyO0 initrd rw init=/init videoout=omap24xxvout omap_vout_mod.video1_numbuffers=6 omap_vout_mod.vid1_static_vrfb_alloc=y omap_vout_mod.video2_numbuffers=6 omap_vout_mod.vid2_static_vrfb_alloc=y omapfb.vram=0:8M no_console_suspend" \
+"commonbootargs=console=ttyO0,115200n8 rw init=/init videoout=omap24xxvout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y omap_vout.video2_numbuffers=6 omap_vout.vid2_static_vrfb_alloc=y omapfb.vram=0:8M no_console_suspend" \
 	"\0" \
 \
 "recoveryboot=\
@@ -241,7 +241,8 @@ mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uImage; fatload mmc $mmc
 \
 "autodetectmmc=if itest.s ${bootdevice} == \"SD\"; then\
  setenv mmcbootdev 0;\
- setenv mmcromdev 0;\
+ setenv mmcromdev 1;\
+ mmcinit 1;\
 else\
  setenv mmcbootdev 1;\
  setenv mmcromdev 1;\
