@@ -162,6 +162,7 @@ typedef struct vidinfo {
 	ushort	vl_row;		/* Number of rows (i.e. 480) */
 	ushort	vl_width;	/* Width of display area in millimeters */
 	ushort	vl_height;	/* Height of display area in millimeters */
+    	ushort *cmap;
 
 	/* LCD configuration register */
 	u_char	vl_clkp;	/* Clock polarity */

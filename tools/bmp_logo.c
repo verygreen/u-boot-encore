@@ -129,6 +129,15 @@ int main (int argc, char *argv[])
 		b->palette[(int)(i*3+1)] = fgetc(fp);
 		b->palette[(int)(i*3+0)] = fgetc(fp);
 		x=fgetc(fp);
+
+                printf ("%s0x0%X%X%X,%s",
+                        ((i%8) == 0) ? "\t" : "  ",
+                        (b->palette[(int)(i*3+0)] >> 4) & 0x0F,
+                        (b->palette[(int)(i*3+1)] >> 4) & 0x0F,
+                        (b->palette[(int)(i*3+2)] >> 4) & 0x0F,
+                        ((i%8) == 7) ? "\n" : ""
+                );
+
 /*
 		printf ("%s0x0%X%X%X,%s",
 			((i%8) == 0) ? "\t" : "  ",
@@ -137,12 +146,15 @@ int main (int argc, char *argv[])
 			(b->palette[(int)(i*3+2)])&0xf,
 			((i%8) == 7) ? "\n" : ""
 		);
-		*/
+		
 			printf ("%s0x%X,%s",
 			((i%8) == 0) ? "\t" : "  ",
-			( ((b->palette[(int)(i*3+0)])<<11)&0xffff)|( ((b->palette[(int)(i*3+1)])<<5) &0xffff) |(b->palette[(int)(i*3+2)]),
+			( ((b->palette[(int)(i*3+0)])<<11)&0xffff)|
+                        ( ((b->palette[(int)(i*3+1)])<<5) &0xffff)|
+                           (b->palette[(int)(i*3+2)]),
 			((i%8) == 7) ? "\n" : ""
 		);
+*/
 	}
 
 	/* seek to offset indicated by file header */
