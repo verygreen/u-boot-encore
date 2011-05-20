@@ -28,6 +28,7 @@
 
 /* #define	DEBUG	*/
 
+#define CONFIG_SPLASH_SCREEN_ALIGN 1
 #include <common.h>
 #include <watchdog.h>
 #include <command.h>
@@ -434,7 +435,7 @@ static void power_off(void)
 extern int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[]);
 extern void lcd_enable(void);
 extern void lcd_disable(void);
-extern void bitmap_plot (int x, int y,uchar which);
+extern void bitmap_plot (int x, int y, uchar which);
 extern void lcd_adjust_brightness(int level);
 extern void encore_button_rtc_ack(void);
 
@@ -574,20 +575,20 @@ static void Encore_boot(void)
   				charger_type =2;
   	   }
  	}
-	/*we have enough juice in battery*/	
+	/*we have enough juice in battery*/
 	if(cap_ok){
 		     /*since we have enough juice, we boost up the brightness*/
 		     lcd_adjust_brightness(80);
-		     bitmap_plot (1008,133,0);
+		     bitmap_plot (864,140,0); //1008,133
 		     boot_normal = 1;
    }
    else{
 		if(charger_type){
-	 			bitmap_plot (928,140,1);
+	 			bitmap_plot (864,140,1);
 	 	}
 	   else{ 
 	         /*if no charger and we dont have enouf juice,display the info and shut it down*/
-	   	   bitmap_plot (928,140,2);
+	   	   bitmap_plot (864,140,2);
   	    	 	udelay( 3000 * 1000 );
 	    	   power_off();
 	   }

@@ -43,6 +43,18 @@ extern void *lcd_console_address;	/* Start of console buffer	*/
 
 extern short console_col;
 extern short console_row;
+extern struct vidinfo panel_info;
+
+extern void lcd_ctrl_init (void *lcdbase);
+extern void lcd_enable (void);
+
+/* setcolreg used in 8bpp/16bpp; initcolregs used in monochrome */
+extern void lcd_setcolreg (ushort regno,
+				ushort red, ushort green, ushort blue);
+extern void lcd_initcolregs (void);
+
+/* gunzip_bmp used if CONFIG_VIDEO_BMP_GZIP */
+extern struct bmp_image *gunzip_bmp(unsigned long addr, unsigned long *lenp);
 
 #if defined CONFIG_MPC823
 /*
@@ -75,9 +87,7 @@ typedef struct vidinfo {
 	u_char	vl_wbf;		/* Wait between frames */
 } vidinfo_t;
 
-extern vidinfo_t panel_info;
-
-#elif defined CONFIG_PXA250
+#elif defined CONFIG_PXA250 || defined CONFIG_PXA27X || defined CONFIG_CPU_MONAHANS
 /*
  * PXA LCD DMA descriptor
  */
@@ -146,7 +156,31 @@ typedef struct vidinfo {
 	struct	pxafb_info pxa;
 } vidinfo_t;
 
-extern vidinfo_t panel_info;
+#elif defined(CONFIG_ATMEL_LCD)
+
+typedef struct vidinfo {
+	u_long vl_col;		/* Number of columns (i.e. 640) */
+	u_long vl_row;		/* Number of rows (i.e. 480) */
+	u_long vl_clk;	/* pixel clock in ps    */
+
+	/* LCD configuration register */
+	u_long vl_sync;		/* Horizontal / vertical sync */
+	u_long vl_bpix;		/* Bits per pixel, 0 = 1, 1 = 2, 2 = 4, 3 = 8, 4 = 16 */
+	u_long vl_tft;		/* 0 = passive, 1 = TFT */
+	u_long vl_cont_pol_low;	/* contrast polarity is low */
+
+	/* Horizontal control register. */
+	u_long vl_hsync_len;	/* Length of horizontal sync */
+	u_long vl_left_margin;	/* Time from sync to picture */
+	u_long vl_right_margin;	/* Time from picture to sync */
+
+	/* Vertical control register. */
+	u_long vl_vsync_len;	/* Length of vertical sync */
+	u_long vl_upper_margin;	/* Time from sync to picture */
+	u_long vl_lower_margin;	/* Time from picture to sync */
+
+	u_long	mmio;		/* Memory mapped registers */
+} vidinfo_t;
 
 #elif defined CONFIG_3621EVT1A
 
@@ -195,22 +229,27 @@ void	lcd_putc	(const char c);
 void	lcd_puts	(const char *s);
 void	lcd_printf	(const char *fmt, ...);
 
+/* Allow boards to customize the information displayed */
+void lcd_show_board_info(void);
 
 /************************************************************************/
 /* ** BITMAP DISPLAY SUPPORT						*/
 /************************************************************************/
-#if (CONFIG_COMMANDS & CFG_CMD_BMP) || defined(CONFIG_SPLASH_SCREEN)
+#define CONFIG_CMD_BMP
+#if defined(CONFIG_CMD_BMP) || defined(CONFIG_SPLASH_SCREEN)
 # include <bmp_layout.h>
 # include <asm/byteorder.h>
-#endif /* (CONFIG_COMMANDS & CFG_CMD_BMP) || CONFIG_SPLASH_SCREEN */
+#endif
 
 /*
  *  Information about displays we are using. This is for configuring
  *  the LCD controller and memory allocation. Someone has to know what
  *  is connected, as we can't autodetect anything.
  */
-#define CFG_HIGH	0	/* Pins are active high			*/
-#define CFG_LOW		1	/* Pins are active low			*/
+#define CONFIG_SYS_HIGH	0	/* Pins are active high			*/
+#define CONFIG_SYS_LOW		1	/* Pins are active low			*/
+#define CFG_HIGH CONFIG_SYS_HIGH  //backwards comapt
+#define CFG_LOW CONFIG_SYS_LOW   //backwards compat
 
 #define LCD_MONOCHROME	0
 #define LCD_COLOR2	1
@@ -221,9 +260,9 @@ void	lcd_printf	(const char *fmt, ...);
 /*----------------------------------------------------------------------*/
 #if defined(CONFIG_LCD_INFO_BELOW_LOGO)
 # define LCD_INFO_X		0
-# define LCD_INFO_Y		(BMP_LOGO_HEIGHT + VIDEO_FONT_HEIGHT)
+# define LCD_INFO_Y		(BMP_LOGO_HEIGHT_B + VIDEO_FONT_HEIGHT)
 #elif defined(CONFIG_LCD_LOGO)
-# define LCD_INFO_X		(BMP_LOGO_WIDTH + 4 * VIDEO_FONT_WIDTH)
+# define LCD_INFO_X		(BMP_LOGO_WIDTH_B + 4 * VIDEO_FONT_WIDTH)
 # define LCD_INFO_Y		(VIDEO_FONT_HEIGHT)
 #else
 # define LCD_INFO_X		(VIDEO_FONT_WIDTH)
@@ -275,12 +314,6 @@ void	lcd_printf	(const char *fmt, ...);
  */
 # define CONSOLE_COLOR_BLACK	0x0000
 # define CONSOLE_COLOR_WHITE	0xffff	/* Must remain last / highest	*/
-# define CONSOLE_COLOR_BLUE   0x001F
-# define CONSOLE_COLOR_GREEN  0x07E0  
-# define CONSOLE_COLOR_RED    0xF800  
-# define CONSOLE_COLOR_YELLOW   (CONSOLE_COLOR_BLUE | CONSOLE_COLOR_GREEN)
-# define CONSOLE_COLOR_MAGENTA  (CONSOLE_COLOR_RED | CONSOLE_COLOR_BLUE)
-# define CONSOLE_COLOR_CYAN     (CONSOLE_COLOR_RED | CONSOLE_COLOR_GREEN)
 
 #endif /* color definitions */
 
@@ -311,10 +344,8 @@ void	lcd_printf	(const char *fmt, ...);
 #if LCD_BPP == LCD_MONOCHROME
 # define COLOR_MASK(c)		((c)	  | (c) << 1 | (c) << 2 | (c) << 3 | \
 				 (c) << 4 | (c) << 5 | (c) << 6 | (c) << 7)
-#elif LCD_BPP == LCD_COLOR8
+#elif (LCD_BPP == LCD_COLOR8) || (LCD_BPP == LCD_COLOR16)
 # define COLOR_MASK(c)		(c)
-#elif LCD_BPP == LCD_COLOR16
-#define COLOR_MASK(c) (c)
 #else
 # error Unsupported LCD BPP.
 #endif
@@ -322,3 +353,4 @@ void	lcd_printf	(const char *fmt, ...);
 /************************************************************************/
 
 #endif	/* _LCD_H_ */
+
