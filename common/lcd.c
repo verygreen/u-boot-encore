@@ -100,6 +100,11 @@ extern void lcd_setcolreg (ushort regno,
 extern void lcd_initcolregs (void);
 #endif
 
+#if LCD_BPP == LCD_COLOR16
+static uchar  pixel_size = 0;
+static uint   pixel_line_length = 0;
+#endif
+
 static int lcd_getbgcolor (void);
 static void lcd_setfgcolor (int color);
 static void lcd_setbgcolor (int color);
@@ -117,6 +122,11 @@ static void lcd_getcolreg (ushort regno,
 				ushort *red, ushort *green, ushort *blue);
 static int lcd_getfgcolor (void);
 #endif	/* NOT_USED_SO_FAR */
+
+static uchar c_orient = O_PORTRAIT;
+static uchar c_max_rows; // = CONSOLE_ROWS;
+static uchar c_max_cols; // = CONSOLE_COLS;
+
 
 /************************************************************************/
 
@@ -136,7 +146,7 @@ static void console_scrollup (void)
 static inline void console_back (void)
 {
 	if (--console_col < 0) {
-		console_col = CONSOLE_COLS-1 ;
+		console_col = c_max_cols-1 ;
 		if (--console_row < 0) {
 			console_row = 0;
 		}
@@ -155,14 +165,49 @@ static inline void console_newline (void)
 	console_col = 0;
 
 	/* Check if we need to scroll the terminal */
-	if (console_row >= CONSOLE_ROWS) {
+	if (console_row >= c_max_rows) {
 		/* Scroll everything up */
-		console_scrollup () ;
-		--console_row;
+	//	console_scrollup () ;
+	//	--console_row; 
+	console_row = 0;
 	}
 }
 
 /*----------------------------------------------------------------------*/
+
+static inline void lcd_console_setpixel(ushort x, ushort y, ushort c)
+{
+    ushort rx = (c_orient == O_PORTRAIT)? (y) : (x);
+    ushort ry = (c_orient == O_PORTRAIT)? (panel_info.vl_row-x) : (y);
+    ushort *dest = ((ushort *)lcd_base) + rx + (ry*pixel_line_length);
+    *dest = c;   
+}
+
+
+static void lcd_drawchar(ushort x, ushort y, uchar c)
+{
+//    LOG_CONSOLE("lcd_drawchar: %c [%d, %d]\n", c, x, y);
+    ushort row, col, rx, ry, sy, sx;
+    for(row=0; row<VIDEO_FONT_HEIGHT; row++)
+    {
+        sy = y + (row);
+        for(ry = sy; ry < (sy+1); ry++)
+        {
+            uchar bits = video_fontdata[c*VIDEO_FONT_HEIGHT+row];
+            for(col=0; col<VIDEO_FONT_WIDTH; col++)
+            {
+                sx = x + (col);
+                for(rx = sx; rx < (sx+1); rx++)
+                {
+                    lcd_console_setpixel(rx, ry,
+                        (bits & 0x80)? lcd_color_fg:lcd_color_bg);
+                }
+                bits <<= 1;
+            }
+        }
+    }
+}
+
 
 void lcd_putc (const char c)
 {
@@ -182,7 +227,7 @@ void lcd_putc (const char c)
 			console_col +=  8;
 			console_col &= ~7;
 
-			if (console_col >= CONSOLE_COLS) {
+			if (console_col >= c_max_cols) {
 				console_newline();
 			}
 			return;
@@ -190,10 +235,11 @@ void lcd_putc (const char c)
 	case '\b':	console_back();
 			return;
 
-	default:	lcd_putc_xy (console_col * VIDEO_FONT_WIDTH,
+	default:	lcd_drawchar(console_col*VIDEO_FONT_WIDTH,
+//lcd_putc_xy (console_col * VIDEO_FONT_WIDTH,
 				     console_row * VIDEO_FONT_HEIGHT,
 				     c);
-			if (++console_col >= CONSOLE_COLS) {
+			if (++console_col >= c_max_cols) {
 				console_newline();
 			}
 			return;
@@ -233,8 +279,8 @@ void lcd_printf(const char *fmt, ...)
 
 void lcd_console_setpos(short row, short col)
 {
-  console_row = (row>0)? ((row > CONSOLE_ROWS)? CONSOLE_ROWS:row):0;
-  console_col = (col>0)? ((col > CONSOLE_COLS)? CONSOLE_COLS:col):0;
+  console_row = (row>0)? ((row > c_max_rows)? c_max_rows:row):0;
+  console_col = (col>0)? ((col > c_max_cols)? c_max_cols:col):0;
 }
 
 /*----------------------------------------------------------------------*/
@@ -248,6 +294,7 @@ void lcd_console_setcolor(int fg, int bg)
 /************************************************************************/
 /* ** Low-Level Graphics Routines					*/
 /************************************************************************/
+
 
 static void lcd_drawchars (ushort x, ushort y, uchar *str, int count)
 {
@@ -321,9 +368,9 @@ static inline void lcd_putc_xy (ushort x, ushort y, uchar c)
 {
 #if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO) \
   && !defined(CONFIG_3621EVT1A)
-	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, &c, 1);
+	lcd_drawchar (x, y+BMP_LOGO_HEIGHT_B, &c);
 #else
-	lcd_drawchars (x, y, &c, 1);
+	lcd_drawchar (x, y, &c);
 #endif
 }
 
@@ -444,6 +491,7 @@ int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	lcd_console_address = lcd_base; //lcd_logo()
 	console_col = 0;
 	console_row = 0;
+	lcd_console_setpos(0, 0);
 
 	return (0);
 }
@@ -458,16 +506,29 @@ U_BOOT_CMD(
 
 static int lcd_init (void *lcdbase)
 {
+
 	/* Initialize the lcd controller */
 	debug ("[LCD] Initializing LCD framebuffer at %p\n", lcdbase);
 
 	lcd_ctrl_init (lcdbase);
 	lcd_is_enabled =1;
+
+      /* Initialize the console */
+    if(c_orient == O_PORTRAIT)
+    {
+        c_max_cols = panel_info.vl_row/(VIDEO_FONT_WIDTH);
+        c_max_rows = panel_info.vl_col/(VIDEO_FONT_HEIGHT);
+    }
+    else
+    {
+        c_max_cols = panel_info.vl_col/(VIDEO_FONT_WIDTH);
+        c_max_rows = panel_info.vl_row/(VIDEO_FONT_HEIGHT);
+    }
+
 	lcd_clear (NULL, 1, 1, NULL);	/* dummy args */
 #ifndef CONFIG_LCD_NOT_ENABLED_AT_INIT
 	lcd_enable ();
 #endif
-	/* Initialize the console */
 	console_col = 0;
 	lcd_console_address = lcd_base;
 #ifdef CONFIG_LCD_INFO_BELOW_LOGO
@@ -482,6 +543,11 @@ static int lcd_init (void *lcdbase)
 	lcd_is_enabled = 1;
 #endif
 
+#if LCD_BPP == LCD_COLOR16
+  pixel_size = NBITS(LCD_BPP)/8;
+  pixel_line_length = lcd_line_length/pixel_size;
+#endif
+	lcd_console_setpos(0, 0);
 	return 0;
 }
 

@@ -232,8 +232,6 @@ void	lcd_printf	(const char *fmt, ...);
 #ifdef CONFIG_3621EVT1A
 #define O_LANDSCAPE   0
 #define O_PORTRAIT    1
-#define SCALE_DEFAULT 1
-#define SCALE_LARGE   2
 #endif
 
 /* Allow boards to customize the information displayed */
@@ -339,7 +337,7 @@ void lcd_show_board_info(void);
 /************************************************************************/
 //#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
 //# define CONSOLE_ROWS		((panel_info.vl_row-BMP_LOGO_HEIGHT_B) \
-					/ VIDEO_FONT_HEIGHT)
+//					/ VIDEO_FONT_HEIGHT)
 //#else
 # define CONSOLE_ROWS		(panel_info.vl_row / VIDEO_FONT_HEIGHT)
 //#endif
