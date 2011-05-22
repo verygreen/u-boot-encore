@@ -436,6 +436,7 @@ extern int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[]);
 extern void lcd_enable(void);
 extern void lcd_disable(void);
 extern void bitmap_plot (int x, int y, uchar which);
+extern void lcd_puts(const char* s);
 extern void lcd_adjust_brightness(int level);
 extern void encore_button_rtc_ack(void);
 
@@ -581,6 +582,7 @@ static void Encore_boot(void)
 		     lcd_adjust_brightness(80);
 		     bitmap_plot (864,140,0); //1008,133
 		     boot_normal = 1;
+                     lcd_puts("fattire wuz here.\n");
    }
    else{
 		if(charger_type){

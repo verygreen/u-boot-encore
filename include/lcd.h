@@ -229,6 +229,13 @@ void	lcd_putc	(const char c);
 void	lcd_puts	(const char *s);
 void	lcd_printf	(const char *fmt, ...);
 
+#ifdef CONFIG_3621EVT1A
+#define O_LANDSCAPE   0
+#define O_PORTRAIT    1
+#define SCALE_DEFAULT 1
+#define SCALE_LARGE   2
+#endif
+
 /* Allow boards to customize the information displayed */
 void lcd_show_board_info(void);
 
@@ -314,7 +321,12 @@ void lcd_show_board_info(void);
  */
 # define CONSOLE_COLOR_BLACK	0x0000
 # define CONSOLE_COLOR_WHITE	0xffff	/* Must remain last / highest	*/
-
+# define CONSOLE_COLOR_BLUE   	0x001F
+# define CONSOLE_COLOR_GREEN  	0x07E0
+# define CONSOLE_COLOR_RED    	0xF800
+# define CONSOLE_COLOR_YELLOW   (CONSOLE_COLOR_RED | CONSOLE_COLOR_GREEN)
+# define CONSOLE_COLOR_MAGENTA  (CONSOLE_COLOR_RED | CONSOLE_COLOR_BLUE)
+# define CONSOLE_COLOR_CYAN     (CONSOLE_COLOR_BLUE | CONSOLE_COLOR_GREEN)
 #endif /* color definitions */
 
 /************************************************************************/
@@ -325,15 +337,16 @@ void lcd_show_board_info(void);
 /************************************************************************/
 /* ** CONSOLE DEFINITIONS & FUNCTIONS					*/
 /************************************************************************/
-#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
-# define CONSOLE_ROWS		((panel_info.vl_row-BMP_LOGO_HEIGHT_B) \
+//#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
+//# define CONSOLE_ROWS		((panel_info.vl_row-BMP_LOGO_HEIGHT_B) \
 					/ VIDEO_FONT_HEIGHT)
-#else
+//#else
 # define CONSOLE_ROWS		(panel_info.vl_row / VIDEO_FONT_HEIGHT)
-#endif
+//#endif
 
 #define CONSOLE_COLS		(panel_info.vl_col / VIDEO_FONT_WIDTH)
 #define CONSOLE_ROW_SIZE	(VIDEO_FONT_HEIGHT * lcd_line_length)
+#define CONSOLE_SIZE            (CONSOLE_ROW_SIZE * CONSOLE_ROWS)
 #define CONSOLE_ROW_FIRST	(lcd_console_address)
 #define CONSOLE_ROW_SECOND	(lcd_console_address + CONSOLE_ROW_SIZE)
 #define CONSOLE_ROW_LAST	(lcd_console_address + CONSOLE_SIZE \

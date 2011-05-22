@@ -385,6 +385,12 @@ fi" \
 #define CFG_MAXARGS              16          /* max number of command args */
 #define CFG_BARGSIZE             CFG_CBSIZE  /* Boot Argument Buffer Size */
 
+/* for lcd.c */
+#define CONFIG_SYS_PBSIZE CFG_PBSIZE
+#define CONFIG_SYS_CBSIZE CFG_CBSIZE
+#define CONFIG_SPLASH_SCREEN_ALIGN
+
+
 #define CFG_MEMTEST_START        (OMAP34XX_SDRC_CS0)  /* memtest works on */
 #define CFG_MEMTEST_END          (OMAP34XX_SDRC_CS0+SZ_31M)
 
@@ -558,6 +564,7 @@ extern unsigned int boot_flash_type;
 #define CONFIG_LCD  1
 #define CONFIG_LCD_LOGO 1
 #define CONFIG_LCD_NOT_ENABLED_AT_INIT
+#define CFG_WHITE_ON_BLACK
 
 /* define early driver board init to allow board initialization after i2c*/
 #define CONFIG_DRV_BOARD_INIT 1

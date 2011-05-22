@@ -103,6 +103,7 @@ void lcd_ctrl_init(void *lcdbase)
    omap3_dss_panel_config(&panel_info.dss_panel_config);
    omap3_dss_mem_config(&panel_info.dss_panel_config, lcdbase);
    lcd_set_base = lcdbase;
+   lcd_base = lcdbase;
 }
 
 void lcd_setcolreg (ushort regno, ushort red, ushort green, ushort blue)
@@ -276,6 +277,7 @@ void lcd_enable(void)
     omap3_dss_enable();
     enable_backlight();
     lcd_disabled = 0;
+    lcd_is_enabled = 1;
 }
 
 void lcd_disable(void)
@@ -294,6 +296,7 @@ void lcd_disable(void)
     MUX_VAL(CP(McBSP1_FSX),     (IDIS | PTD | DIS | M1)) /*McSPI4-CS0*/
 
     lcd_disabled = 1;
+    lcd_is_enabled=0;
 }
 
 void lcd_panel_disable(void)

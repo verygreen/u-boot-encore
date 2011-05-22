@@ -28,7 +28,6 @@
 
 //#define DEBUG 
 
-
 #include <config.h>
 #include <common.h>
 #include <command.h>
@@ -88,10 +87,10 @@ static inline void lcd_putc_xy (ushort x, ushort y, uchar  c);
 static int lcd_init (void *lcdbase);
 
 int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[]);
+static void *lcd_logo (void);
+
 extern void lcd_ctrl_init (void *lcdbase);
 extern void lcd_enable (void);
-
-
 
 #if LCD_BPP == LCD_COLOR8
 extern void lcd_setcolreg (ushort regno,
@@ -104,13 +103,14 @@ extern void lcd_initcolregs (void);
 static int lcd_getbgcolor (void);
 static void lcd_setfgcolor (int color);
 static void lcd_setbgcolor (int color);
-static void *lcd_logo (void);
+
 char lcd_is_enabled = 0;
-extern vidinfo_t panel_info;
-extern ulong calc_fbsize(void);
-static ulong fb_size;
-static ushort* local_fb=0;
-static ushort  h,w;
+
+//extern vidinfo_t panel_info;
+//extern ulong calc_fbsize(void);
+ static ulong fb_size;
+//static ushort* local_fb=0;
+//static ushort  h,w;
 
 #ifdef	NOT_USED_SO_FAR
 static void lcd_getcolreg (ushort regno,
@@ -124,32 +124,11 @@ static int lcd_getfgcolor (void);
 
 static void console_scrollup (void)
 {
-#if 1
 	/* Copy up rows ignoring the first one */
 	memcpy (CONSOLE_ROW_FIRST, CONSOLE_ROW_SECOND, CONSOLE_SCROLL_SIZE);
 
 	/* Clear the last one */
 	memset (CONSOLE_ROW_LAST, COLOR_MASK(lcd_color_bg), CONSOLE_ROW_SIZE);
-#else
-	/*
-	 * Poor attempt to optimize speed by moving "long"s.
-	 * But the code is ugly, and not a bit faster :-(
-	 */
-	ulong *t = (ulong *)CONSOLE_ROW_FIRST;
-	ulong *s = (ulong *)CONSOLE_ROW_SECOND;
-	ulong    l = CONSOLE_SCROLL_SIZE / sizeof(ulong);
-	uchar  c = lcd_color_bg & 0xFF;
-	ulong val= (c<<24) | (c<<16) | (c<<8) | c;
-
-	while (l--)
-		*t++ = *s++;
-
-	t = (ulong *)CONSOLE_ROW_LAST;
-	l = CONSOLE_ROW_SIZE / sizeof(ulong);
-
-	while (l-- > 0)
-		*t++ = val;
-#endif
 }
 
 /*----------------------------------------------------------------------*/
@@ -236,6 +215,21 @@ void lcd_puts (const char *s)
 	}
 }
 
+
+void lcd_printf(const char *fmt, ...)
+{
+        va_list args;
+        char buf[CONFIG_SYS_PBSIZE];
+
+        va_start(args, fmt);
+        vsprintf(buf, fmt, args);
+        va_end(args);
+
+        lcd_puts(buf);
+
+}
+
+
 /************************************************************************/
 /* ** Low-Level Graphics Routines					*/
 /************************************************************************/
@@ -298,22 +292,22 @@ static void lcd_drawchars (ushort x, ushort y, uchar *str, int count)
 
 static inline void lcd_puts_xy (ushort x, ushort y, uchar *s)
 {
-#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
-	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, s, strlen ((char *)s));
-#else
+//#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
+//	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, s, strlen ((char *)s));
+//#else
 	lcd_drawchars (x, y, s, strlen ((char *)s));
-#endif
+//#endif
 }
 
 /*----------------------------------------------------------------------*/
 
 static inline void lcd_putc_xy (ushort x, ushort y, uchar c)
 {
-#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
-	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, &c, 1);
-#else
+//#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
+//	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, &c, 1);
+//#else
 	lcd_drawchars (x, y, &c, 1);
-#endif
+//#endif
 }
 
 /************************************************************************/
@@ -407,7 +401,7 @@ int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	lcd_setcolreg  (CONSOLE_COLOR_GREY,	0xAA, 0xAA, 0xAA);
 	lcd_setcolreg  (CONSOLE_COLOR_WHITE,	0xFF, 0xFF, 0xFF);
 #endif
-//#define CFG_WHITE_ON_BLACK
+
 #ifndef CFG_WHITE_ON_BLACK
 	lcd_setfgcolor (CONSOLE_COLOR_BLACK);
 	lcd_setbgcolor (CONSOLE_COLOR_WHITE);
@@ -421,14 +415,16 @@ int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 #else
 	/* set framebuffer to background color */
 	memset ((char *)lcd_base,
-		0,
+		COLOR_MASK(lcd_getbgcolor()),
 		fb_size);
+//		0,
+//		fb_size);
 
 #endif
 	/*taking out the logo from DENX SW engineering*/
 	/* Paint the logo and retrieve LCD base address */
 	// debug ("[LCD] Drawing the logo...\n");
-	//lcd_console_address = lcd_logo ();
+	lcd_console_address = lcd_base; //lcd_logo()
 	console_col = 0;
 	console_row = 0;
 
@@ -438,7 +434,7 @@ int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	cls,	1,	1,	lcd_clear,
 	"cls     - clear screen\n",
-	NULL
+	""
 );
 
 /*----------------------------------------------------------------------*/
@@ -456,6 +452,7 @@ static int lcd_init (void *lcdbase)
 #endif
 	/* Initialize the console */
 	console_col = 0;
+	lcd_console_address = lcd_base;
 #ifdef CONFIG_LCD_INFO_BELOW_LOGO
 	console_row = 7 + BMP_LOGO_HEIGHT_B / VIDEO_FONT_HEIGHT;
 #else
@@ -494,7 +491,7 @@ ulong lcd_setmem (ulong addr)
 
 	/* Round up to nearest full page */
 	size = (size + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
-  fb_size =size;
+  	fb_size = size;
 	/* Allocate pages for the frame buffer. */
 	addr -= size;
 
@@ -773,14 +770,13 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 
 
 #ifdef CONFIG_SPLASH_SCREEN_ALIGN
-
 	if (x == BMP_ALIGN_CENTER)
 		x = max(0, (pwidth - width) / 2);
 	else if (x < 0)
 		x = max(0, pwidth - width + x + 1);
 
 	if (y == BMP_ALIGN_CENTER)
-		y = max(0, (panel_info.vl_row - height) / 2 );
+		y = max(0, (panel_info.vl_row - height) / 2);
 	else if (y < 0)
 		y = max(0, panel_info.vl_row - height + y + 1);
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
@@ -854,18 +850,12 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 static void *lcd_logo (void)
 {
 
-//#ifdef CONFIG_LCD_INFO
-//	char info[80];
-//	char temp[32];
-//#endif /* CONFIG_LCD_INFO */
-
 #ifdef CONFIG_SPLASH_SCREEN
 	char *s;
 	ulong addr;
 	static int do_splash = 1;
 
 	if (do_splash && (s = getenv("splashimage")) != NULL) {
-//		addr = simple_strtoul(s, NULL, 16);
 		int x = 0; y = 0;
 		do_splash = 0;
 
@@ -903,13 +893,13 @@ static void *lcd_logo (void)
 #endif /* CONFIG_SPLASH_SCREEN */
 
 #ifdef CONFIG_LCD_LOGO
-//	bitmap_plot (0, 0);
+	bitmap_plot (0, 0, 0);
 #endif /* CONFIG_LCD_LOGO */
 
 #ifdef CONFIG_LCD_INFO
         console_col = LCD_INFO_X / VIDEO_FONT_WIDTH;
         console_row = LCD_INFO_Y / VIDEO_FONT_HEIGHT;
-  //      lcd_show_board_info();
+        lcd_show_board_info();
 #endif /* CONFIG_LCD_INFO */
 
 #if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
