@@ -746,7 +746,7 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_OMAP3630_EDP1       3000
 #define MACH_TYPE_OMAP3621_EDP1       3001
 #define MACH_TYPE_OMAP3621_BOXER      3002
-#define MACH_TYPE_OMAP3621_EVT1A      3003
+#define MACH_TYPE_OMAP3621_EVT1A      3284
 
 #ifdef CONFIG_ARCH_EBSA110
 # ifdef machine_arch_type

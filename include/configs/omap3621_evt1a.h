@@ -220,7 +220,7 @@
 "bootvar=normalboot" \
 	"\0" \
 \
-"commonbootargs=console=ttyO0,115200n8 rw init=/init videoout=omap24xxvout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y omap_vout.video2_numbuffers=6 omap_vout.vid2_static_vrfb_alloc=y omapfb.vram=0:8M no_console_suspend" \
+"commonbootargs=rw init=/init videoout=omap24xxvout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y omap_vout_mod.video2_numbuffers=6 omap_vout_mod.vid2_static_vrfb_alloc=y omapfb.vram=0:8M no_console_suspend" \
 	"\0" \
 \
 "recoveryboot=\
@@ -230,11 +230,7 @@ mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uRecImg; fatload mmc $mm
 	"\0" \
 \
 "normalboot=\
-echo Booting into Android;\
-if fatload mmc ${mmcromdev}:2 0x81c00000 devconf/BootCnt 4; then\
- calc.l *0x81c00000 + 1 0x81c00000;\
- fatsave mmc ${mmcromdev}:2 0x81c00000 devconf/BootCnt 4;\
-fi;\
+echo Booting into Linux;\
 setenv bootargs $commonbootargs;\
 mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uImage; fatload mmc $mmcbootdev 0x81f00000 uRamdisk; bootm 0x81c00000 0x81f00000" \
 	"\0" \
