@@ -236,7 +236,7 @@ if fatload mmc ${mmcromdev}:2 0x81c00000 devconf/BootCnt 4; then\
  fatsave mmc ${mmcromdev}:2 0x81c00000 devconf/BootCnt 4;\
 fi;\
 setenv bootargs $commonbootargs;\
-mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uImage; fatload mmc $mmcbootdev 0x81f00000 uRamdisk; bootm 0x81c00000 0x81f00000" \
+mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uImage; fatload mmc $mmcbootdev 0x82000000 uRamdisk; bootm 0x81c00000 0x82000000" \
 	"\0" \
 \
 "altboot=\
