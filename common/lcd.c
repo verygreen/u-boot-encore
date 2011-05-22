@@ -229,6 +229,21 @@ void lcd_printf(const char *fmt, ...)
 
 }
 
+/*----------------------------------------------------------------------*/
+
+void lcd_console_setpos(short row, short col)
+{
+  console_row = (row>0)? ((row > CONSOLE_ROWS)? CONSOLE_ROWS:row):0;
+  console_col = (col>0)? ((col > CONSOLE_COLS)? CONSOLE_COLS:col):0;
+}
+
+/*----------------------------------------------------------------------*/
+
+void lcd_console_setcolor(int fg, int bg)
+{
+  lcd_color_fg = fg;
+  lcd_color_bg = bg;
+}
 
 /************************************************************************/
 /* ** Low-Level Graphics Routines					*/
@@ -236,10 +251,10 @@ void lcd_printf(const char *fmt, ...)
 
 static void lcd_drawchars (ushort x, ushort y, uchar *str, int count)
 {
-	uchar *dest;
+	ushort *dest;
 	ushort off, row;
 
-	dest = (uchar *)(lcd_base + y * lcd_line_length + x * (1 << LCD_BPP) / 8);
+	dest = (ushort *)(lcd_base + y * lcd_line_length + x * (1 << LCD_BPP) / 8);
 	off  = x * (1 << LCD_BPP) % 8;
 
 	for (row=0;  row < VIDEO_FONT_HEIGHT;  ++row, dest += lcd_line_length)  {
@@ -292,22 +307,24 @@ static void lcd_drawchars (ushort x, ushort y, uchar *str, int count)
 
 static inline void lcd_puts_xy (ushort x, ushort y, uchar *s)
 {
-//#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
-//	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, s, strlen ((char *)s));
-//#else
+#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO) \
+  && !defined(CONFIG_3621EVT1A)
+	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, s, strlen ((char *)s));
+#else
 	lcd_drawchars (x, y, s, strlen ((char *)s));
-//#endif
+#endif
 }
 
 /*----------------------------------------------------------------------*/
 
 static inline void lcd_putc_xy (ushort x, ushort y, uchar c)
 {
-//#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
-//	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, &c, 1);
-//#else
+#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO) \
+  && !defined(CONFIG_3621EVT1A)
+	lcd_drawchars (x, y+BMP_LOGO_HEIGHT_B, &c, 1);
+#else
 	lcd_drawchars (x, y, &c, 1);
-//#endif
+#endif
 }
 
 /************************************************************************/
