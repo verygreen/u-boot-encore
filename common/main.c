@@ -358,7 +358,7 @@ extern void iva_dpll_init_36XX(int, int);
 /****************************************************************************/
 
 #ifdef CONFIG_3621EVT1A
-
+#include <lcd.h>
 
 #define CONVERT_X(v) 		#v
 #define CONVERT(v)		CONVERT_X(v)
@@ -516,15 +516,15 @@ static void Encore_boot(void)
    
 	//These have to be done before bootcmd
 	max17042_preinit();	
-	
+
 	// Read the keypad and store any keys pressed during start
 	tps65921_keypad_keys_pressed(&key_pad);
 
-	// Check if the user request recovery by holding PWR & HOME keys
-	if (gpio_pin_read(14) && (key_pad & HOME_KEY))
+	// Check if the user pressed any keys (wants something)
+	 if (gpio_pin_read(14)||key_pad&HOME_KEY||(key_pad&VOLUP_KEY && key_pad&VOLDN_KEY))
 	    user_req = 1;
 
-	
+
 	i=0;
 	while ( max17042_init() != 0 ) {
 	    if ( i++ > 30 ) {
@@ -582,8 +582,6 @@ static void Encore_boot(void)
 		     lcd_adjust_brightness(80);
 		     bitmap_plot (864,140,0); //1008,133
 		     boot_normal = 1;
-		     lcd_is_enabled = 1;
-                     lcd_puts("fattire wuz here.\n");
    }
    else{
 		if(charger_type){
@@ -693,51 +691,156 @@ static void Encore_boot(void)
 	}
     /*battery ok to boot*/
     if(cap_ok){
+	int opt, ret;
+		unsigned char key;
+		char *dev_list[2] =  {" eMMC                        ", " SD                          "};
+		char *mode_list[3] = {" normal                      ", " Recovery (uRecImg/uRecRam)  ", " Alternate (uAltImg/uAltRam)"};
+		int dev_idx = 0; int mode_idx = 0; int *idx;
+		lcd_is_enabled = 1;
 		if (user_req) {
-			for (i = 0; i < FACTORY_RESET_LOOP; i++)
-			{
-				tps65921_keypad_keys_pressed(&key_pad); 
-				if (!(key_pad & HOME_KEY)) {
-					user_req = 0;
-					printf("HOME_KEY held for less than %d Sec\n", FACTORY_RESET_DELAY);
-					break;
-				}
-					
-				/* Only require power to be held for half of the time */
-				if ((i < FACTORY_RESET_LOOP/2) && !gpio_pin_read(14)) {
-					user_req = 0;
-					printf("POWER_KEY held for less than %d/2 Sec\n", FACTORY_RESET_DELAY);					
-					break;
-				}
-				
-				if (((i+RESET_SECOND) % RESET_SECOND) == 0)
-				{
-					printf("Factory reset count = %d\n", i / RESET_SECOND);	
-				}
-				udelay(RESET_TICK);
-			}
+                        tps65921_keypad_keys_pressed(&key_pad);
+			if 	(key_pad&HOME_KEY && (gpio_pin_read(14)))
+				{ user_req=0; mode_idx = 1; dev_idx=0;
+				 lcd_puts(" Booting into recovery on emmc..."); }	// recovery boot/emmc
+			else if (key_pad&HOME_KEY && (!gpio_pin_read(14)))
+				{ user_req = 1; }  					// use the menu
+			else if (key_pad&VOLUP_KEY && key_pad&VOLDN_KEY)
+				{ user_req = 0; mode_idx =2; dev_idx=0;
+				 lcd_puts(" Booting into alternative on emmc..."); }	// alt boot/emmc
+			else
+				{ user_req = 0; mode_idx=0;dev_idx=0;}		// normal boot/emmc
 		}
-		if (user_req) {
-			  setenv("forcerecovery", "2");
-			  printf("Booting into Factory Reset Kernel\n");
-		}
-		else {
-			setenv("forcerecovery", "0");
-			printf("Booting into Normal Kernel\n");
 
-		     /* note: this does not currently over-write what is in the bcb.
-		      * Action on forcerecovery == 0 could read back the bcb and
-		      * clear it if it is currently 'recovery -- charging.zip, but
-		      * this will generally only happen in development when batteries
-		      * are swapped.  In this case it'll just boot into recovery and
-		      * reboot again into normal OS fairly quickly, so no special 
-		      * code to handle that case.
-		      */
+		if (user_req)  {
+ 			// menu was selected...
+
+			lcd_puts("Entering boot menu...\n");
+			udelay(500*1000);
+			lcd_clear (NULL, 1, 1, NULL);
+			lcd_puts(" Boot options\n");
+			lcd_puts(" ------------\n\n");
+			lcd_puts(" Boot Device:\n"); // row 3
+			lcd_puts(" Boot Mode  :\n"); // row 4
+			lcd_puts("\n Boot now!\n"); //row 6
+			lcd_console_setpos(15, 0);
+			lcd_puts(" Instructions\n");
+			lcd_puts(" ------------\n\n");
+			lcd_puts(" Vol- to move highlight to next option and continue.\n");
+			lcd_puts(" Vol+ to move highlight to previous option.\n");
+			lcd_puts(" Home to select highlighted option.\n");
+			lcd_puts("\n\n ------\n Encore U-Boot Menu by j4mm3r.\n 1.2 port + extras by fattire");
+			opt = 0;
+			idx = &dev_idx;
+
+			while(opt != 2)
+			{
+				if(idx == &dev_idx && opt == 0)
+					lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+				else
+					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
+				lcd_console_setpos(3, 13);
+				lcd_puts(dev_list[dev_idx]);
+
+				if(idx == &mode_idx && opt == 0)
+					lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+				else
+					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
+				lcd_console_setpos(4, 13);
+				lcd_puts(mode_list[mode_idx]);
+
+				lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
+				lcd_console_setpos(6, 0);
+				if(opt == 1) {
+					lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+					lcd_puts(" Boot Now:  Press Home to confirm.  Vol+ to go back");
+					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK); }
+				else
+					lcd_puts(" Boot Now                                          ");
+
+				do
+				{
+					key = 0;
+					ret = tps65921_keypad_keys_pressed(&key);
+
+					if(ret)
+					{
+						udelay(RESET_TICK*5);
+						// When home is pressed then switch selection from device to mode
+						// if already at mode, then continue booting
+						if(key & VOLDN_KEY)
+						{
+							// since selection is already at mode, we need one more
+							// press to boot, opt == 1 displays the confirmation.
+							if(idx == &mode_idx && opt == 0)
+								opt = 1;
+
+							// Advance to mode selection
+							idx = &mode_idx;
+						}
+
+						// Home iterates thru alternatives
+						if(key & HOME_KEY)
+						{
+							// opt == 1 means, its almost ready to boot.
+							if(opt == 1) opt = 2;
+
+
+							if (opt == 0) {
+							if(idx == &dev_idx)
+								*idx = (*idx+1)%2;
+							else
+								*idx = (*idx+1)%3;
+							}
+						
+						}
+
+						// Vol+ switches selection from mode to device
+						if(key & VOLUP_KEY)
+						{
+							if(idx == &mode_idx)
+								idx = &dev_idx;
+
+							// Bail before boot?
+							if(opt==1) {opt = 0;idx=&mode_idx;}
+						}
+					}
+					udelay(RESET_TICK);
+				} while(!ret);
+			}
+
+			lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
+			lcd_console_setpos(6, 0);
+			lcd_puts(" Booting.  One moment...                           ");
+
+
+		} // end of menu
+
+ // NOW BOOT
+
+			// override u-boot.order if present
+			setenv("customboot", "1");
+
+			// Set the boot device
+			if(dev_idx == 0)
+				setenv("bootdevice", "eMMC");
+			else
+				setenv("bootdevice", "SD");
+
+			// If recovery is selected
+			if(mode_idx == 1)
+				setenv("forcerecovery", "2");
+			else
+				setenv("forcerecovery", "0");
+
+			// If alternate booting is required
+			if(mode_idx == 2)
+				setenv("bootvar", "altboot");
+		lcd_is_enabled = 0;
 		}
-	}
-   
+
+
 }
-#endif						
+#endif
 
 void main_loop (void)
 {

@@ -228,6 +228,9 @@ void	lcd_disable	(void);
 void	lcd_putc	(const char c);
 void	lcd_puts	(const char *s);
 void	lcd_printf	(const char *fmt, ...);
+void    lcd_console_setpos  (short row, short col);
+void    lcd_console_setcolor(int fg, int bg);
+
 
 #ifdef CONFIG_3621EVT1A
 #define O_LANDSCAPE   0
@@ -322,7 +325,7 @@ void lcd_show_board_info(void);
 # define CONSOLE_COLOR_BLUE   	0x001F
 # define CONSOLE_COLOR_GREEN  	0x07E0
 # define CONSOLE_COLOR_RED    	0xF800
-# define CONSOLE_COLOR_ORANGE   0xC600
+# define CONSOLE_COLOR_ORANGE   0xC300  /* for clockworkish goodness */
 # define CONSOLE_COLOR_YELLOW   (CONSOLE_COLOR_RED | CONSOLE_COLOR_GREEN)
 # define CONSOLE_COLOR_MAGENTA  (CONSOLE_COLOR_RED | CONSOLE_COLOR_BLUE)
 # define CONSOLE_COLOR_CYAN     (CONSOLE_COLOR_BLUE | CONSOLE_COLOR_GREEN)

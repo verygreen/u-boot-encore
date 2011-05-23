@@ -469,8 +469,8 @@ int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 #ifdef CFG_WHITE_ON_BLACK
 	lcd_setfgcolor (CONSOLE_COLOR_WHITE);
 	lcd_setbgcolor (CONSOLE_COLOR_BLACK);
-#elif defined(CFG_ORANGE_ON_BLACK)
-	lcd_setfgcolor (CONSOLE_COLOR_ORANGE);
+#elif defined(CFG_GREEN_ON_BLACK)
+	lcd_setfgcolor (CONSOLE_COLOR_GREEN);
 	lcd_setbgcolor (CONSOLE_COLOR_BLACK);
 #else  /*black on white*/
         lcd_setfgcolor (CONSOLE_COLOR_BLACK);
