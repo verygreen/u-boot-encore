@@ -582,6 +582,12 @@ static void Encore_boot(void)
 		     lcd_adjust_brightness(80);
 		     bitmap_plot (864,140,0); //1008,133
 		     boot_normal = 1;
+		     udelay(2000*1000);
+
+	// Now that they see a boot screen, give the user a second chance to hold down keys
+	             tps65921_keypad_keys_pressed(&key_pad);
+	             if (gpio_pin_read(14)||key_pad&HOME_KEY||(key_pad&VOLUP_KEY && key_pad&VOLDN_KEY))
+	                  user_req = 1;
    }
    else{
 		if(charger_type){
@@ -735,14 +741,14 @@ static void Encore_boot(void)
 			while(opt != 2)
 			{
 				if(idx == &dev_idx && opt == 0)
-					lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_GREEN);
 				else
 					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
 				lcd_console_setpos(3, 13);
 				lcd_puts(dev_list[dev_idx]);
 
 				if(idx == &mode_idx && opt == 0)
-					lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_GREEN);
 				else
 					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
 				lcd_console_setpos(4, 13);
@@ -751,7 +757,7 @@ static void Encore_boot(void)
 				lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
 				lcd_console_setpos(6, 0);
 				if(opt == 1) {
-					lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_GREEN);
 					lcd_puts(" Boot Now:  Press Home to confirm.  Vol+ to go back");
 					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK); }
 				else
