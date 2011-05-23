@@ -242,7 +242,7 @@ mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uImage; fatload mmc $mmc
 "altboot=\
 echo Booting into alternate mode;\
 setenv bootargs $commonbootargs;\
-mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uAltImg; fatload mmc $mmcbootdev 0x81f00000 uAltRam; bootm 0x81c00000 0x81f00000" \
+mmcinit $mmcbootdev; fatload mmc $mmcbootdev 0x81c00000 uAltImg; fatload mmc $mmcbootdev 0x82000000 uAltRam; bootm 0x81c00000 0x82000000" \
   "\0" \
 \
 "autodetectmmc=if itest.s ${bootdevice} == \"SD\"; then\
