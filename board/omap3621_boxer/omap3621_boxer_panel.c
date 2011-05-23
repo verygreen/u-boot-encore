@@ -277,7 +277,6 @@ void lcd_enable(void)
     omap3_dss_enable();
     enable_backlight();
     lcd_disabled = 0;
-    lcd_is_enabled = 1;
 }
 
 void lcd_disable(void)
@@ -296,7 +295,6 @@ void lcd_disable(void)
     MUX_VAL(CP(McBSP1_FSX),     (IDIS | PTD | DIS | M1)) /*McSPI4-CS0*/
 
     lcd_disabled = 1;
-    lcd_is_enabled=0;
 }
 
 void lcd_panel_disable(void)

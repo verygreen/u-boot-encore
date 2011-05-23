@@ -365,13 +365,13 @@ static inline void lcd_puts_xy (ushort x, ushort y, uchar *s)
 /*----------------------------------------------------------------------*/
 
 static inline void lcd_putc_xy (ushort x, ushort y, uchar c)
-{
+{ /*  this isn't used
 #if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO) \
   && !defined(CONFIG_3621EVT1A)
 	lcd_drawchar (x, y+BMP_LOGO_HEIGHT_B, &c);
 #else
 	lcd_drawchar (x, y, &c);
-#endif
+#endif */
 }
 
 /************************************************************************/
@@ -466,12 +466,15 @@ int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	lcd_setcolreg  (CONSOLE_COLOR_WHITE,	0xFF, 0xFF, 0xFF);
 #endif
 
-#ifndef CFG_WHITE_ON_BLACK
-	lcd_setfgcolor (CONSOLE_COLOR_BLACK);
-	lcd_setbgcolor (CONSOLE_COLOR_WHITE);
-#else
+#ifdef CFG_WHITE_ON_BLACK
 	lcd_setfgcolor (CONSOLE_COLOR_WHITE);
 	lcd_setbgcolor (CONSOLE_COLOR_BLACK);
+#elif defined(CFG_ORANGE_ON_BLACK)
+	lcd_setfgcolor (CONSOLE_COLOR_ORANGE);
+	lcd_setbgcolor (CONSOLE_COLOR_BLACK);
+#else  /*black on white*/
+        lcd_setfgcolor (CONSOLE_COLOR_BLACK);
+        lcd_setbgcolor (CONSOLE_COLOR_WHITE);
 #endif	/* CFG_WHITE_ON_BLACK */
 
 #ifdef	LCD_TEST_PATTERN

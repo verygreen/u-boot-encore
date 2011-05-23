@@ -28,7 +28,6 @@
 
 /* #define	DEBUG	*/
 
-#define CONFIG_SPLASH_SCREEN_ALIGN 1
 #include <common.h>
 #include <watchdog.h>
 #include <command.h>
@@ -438,6 +437,7 @@ extern void lcd_disable(void);
 extern void bitmap_plot (int x, int y, uchar which);
 extern void lcd_puts(const char* s);
 extern void lcd_adjust_brightness(int level);
+extern char lcd_is_enabled;
 extern void encore_button_rtc_ack(void);
 
 /*this is where we handle dead battery scenario. We spin idle and wait for battery to be charged over
@@ -582,6 +582,7 @@ static void Encore_boot(void)
 		     lcd_adjust_brightness(80);
 		     bitmap_plot (864,140,0); //1008,133
 		     boot_normal = 1;
+		     lcd_is_enabled = 1;
                      lcd_puts("fattire wuz here.\n");
    }
    else{
