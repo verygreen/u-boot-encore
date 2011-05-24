@@ -700,41 +700,52 @@ static void Encore_boot(void)
 	int opt, ret;
 		unsigned char key;
 		char *dev_list[2] =  {" eMMC                        ", " SD                          "};
-		char *mode_list[3] = {" normal                      ", " Recovery (uRecImg/uRecRam)  ", " Alternate (uAltImg/uAltRam)"};
+		char *mode_list[3] = {" normal                      ", " Recovery (uRecImg/uRecRam)  ", " Alternate (uAltImg/uAltRam) "};
 		int dev_idx = 0; int mode_idx = 0; int *idx;
 		lcd_is_enabled = 1;
 		if (user_req) {
                         tps65921_keypad_keys_pressed(&key_pad);
 			if 	(key_pad&HOME_KEY && (gpio_pin_read(14)))
-				{ user_req=0; mode_idx = 1; dev_idx=0;
-				 lcd_puts(" Booting into recovery on emmc..."); }	// recovery boot/emmc
+				{ user_req=0; mode_idx = 1;
+				 lcd_console_setpos(40, 25);
+				 lcd_puts(" Booting into recovery..."); }	// recovery boot
 			else if (key_pad&HOME_KEY && (!gpio_pin_read(14)))
-				{ user_req = 1; }  					// use the menu
+				{ user_req = 1; 
+				 lcd_console_setpos(40, 25);
+				 lcd_puts("   Entering boot menu...");
+				udelay(1000*1000);}  				// use the menu
 			else if (key_pad&VOLUP_KEY && key_pad&VOLDN_KEY)
-				{ user_req = 0; mode_idx =2; dev_idx=0;
-				 lcd_puts(" Booting into alternative on emmc..."); }	// alt boot/emmc
+				{ user_req = 0; mode_idx =2;
+				 lcd_console_setpos(40, 25);
+				 lcd_puts("Booting into alternate..."); }	// alt boot
 			else
-				{ user_req = 0; mode_idx=0;dev_idx=0;}		// normal boot/emmc
+				{ user_req = 0; mode_idx=0;
+				 lcd_console_setpos(40, 25);
+				 lcd_puts("    Booting normally...");
+				 setenv("forcerecovery", "0");
+				 setenv("customboot", "0");}		// normal boot
 		}
 
 		if (user_req)  {
  			// menu was selected...
-
-			lcd_puts("Entering boot menu...\n");
-			udelay(500*1000);
 			lcd_clear (NULL, 1, 1, NULL);
-			lcd_puts(" Boot options\n");
+			lcd_console_setpos(0, 0);
+			lcd_puts(" Boot Options\n");
 			lcd_puts(" ------------\n\n");
 			lcd_puts(" Boot Device:\n"); // row 3
 			lcd_puts(" Boot Mode  :\n"); // row 4
-			lcd_puts("\n Boot now!\n"); //row 6
+			lcd_puts("\n Boot Now\n"); //row 6
 			lcd_console_setpos(15, 0);
 			lcd_puts(" Instructions\n");
 			lcd_puts(" ------------\n\n");
-			lcd_puts(" Vol- to move highlight to next option and continue.\n");
-			lcd_puts(" Vol+ to move highlight to previous option.\n");
-			lcd_puts(" Home to select highlighted option.\n");
-			lcd_puts("\n\n ------\n Encore U-Boot Menu by j4mm3r.\n 1.2 port + extras by fattire");
+			lcd_puts(" VOL- moves down.\n");
+			lcd_puts(" VOL+ moves up.\n");
+			lcd_puts(" HOME toggles your selection.\n");
+			lcd_puts("\n\n NOTE: To enable the alternative boot, add a kernel and ramdisk to\n");
+			lcd_puts("       the first partition of your boot volume, named uAltImg\n");
+			lcd_puts("       (for the kernel) and uAltRam (for the ramdisk).");
+			lcd_console_setpos(55, 0);
+			lcd_puts(" ------\n Encore U-Boot Menu by j4mm3r.\n 1.2 port + extras by fattire");
 			opt = 0;
 			idx = &dev_idx;
 
@@ -758,10 +769,10 @@ static void Encore_boot(void)
 				lcd_console_setpos(6, 0);
 				if(opt == 1) {
 					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_GREEN);
-					lcd_puts(" Boot Now:  Press Home to confirm.  Vol+ to go back");
+					lcd_puts(" Boot Now.  Press Home to confirm.");
 					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK); }
 				else
-					lcd_puts(" Boot Now                                          ");
+					lcd_puts(" Boot Now                         ");
 
 				do
 				{
@@ -817,31 +828,32 @@ static void Encore_boot(void)
 			lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
 			lcd_console_setpos(6, 0);
 			lcd_puts(" Booting.  One moment...                           ");
-
-
-		} // end of menu
-
- // NOW BOOT
-
 			// override u-boot.order if present
 			setenv("customboot", "1");
-
+		
 			// Set the boot device
 			if(dev_idx == 0)
 				setenv("bootdevice", "eMMC");
 			else
 				setenv("bootdevice", "SD");
 
-			// If recovery is selected
-			if(mode_idx == 1)
-				setenv("forcerecovery", "2");
-			else
-				setenv("forcerecovery", "0");
 
-			// If alternate booting is required
-			if(mode_idx == 2)
-				setenv("bootvar", "altboot");
+		} // end of menu
+
+		// If recovery is selected
+		if(mode_idx == 1)
+			setenv("forcerecovery", "2");
+		else
+			setenv("forcerecovery", "0");
+
+		// If alternate booting is required
+		if(mode_idx == 2)
+			setenv("bootvar", "altboot");
+
 		lcd_is_enabled = 0;
+
+// Now Boot
+
 		}
 
 
