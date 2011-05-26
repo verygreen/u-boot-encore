@@ -576,7 +576,7 @@ extern unsigned int boot_flash_type;
 #define CONFIG_LCD  1
 #define CONFIG_LCD_LOGO 1
 #define CONFIG_LCD_NOT_ENABLED_AT_INIT
-#define CFG_GREEN_ON_BLACK
+#define CFG_CYAN_ON_BLACK
 
 /* define early driver board init to allow board initialization after i2c*/
 #define CONFIG_DRV_BOARD_INIT 1

@@ -517,14 +517,6 @@ static void Encore_boot(void)
 	//These have to be done before bootcmd
 	max17042_preinit();	
 
-	// Read the keypad and store any keys pressed during start
-	tps65921_keypad_keys_pressed(&key_pad);
-
-	// Check if the user pressed any keys (wants something)
-	 if (gpio_pin_read(14)||key_pad&HOME_KEY||(key_pad&VOLUP_KEY && key_pad&VOLDN_KEY))
-	    user_req = 1;
-
-
 	i=0;
 	while ( max17042_init() != 0 ) {
 	    if ( i++ > 30 ) {
@@ -584,7 +576,7 @@ static void Encore_boot(void)
 		     boot_normal = 1;
 		     udelay(2000*1000);
 
-	// Now that they see a boot screen, give the user a second chance to hold down keys
+	// Now that they see a boot screen, give the user a chance to hold down keys
 	             tps65921_keypad_keys_pressed(&key_pad);
 	             if (gpio_pin_read(14)||key_pad&HOME_KEY||(key_pad&VOLUP_KEY && key_pad&VOLDN_KEY))
 	                  user_req = 1;
@@ -615,7 +607,7 @@ static void Encore_boot(void)
 		        udelay(2000*1000);
 				lcd_adjust_brightness(40-8*i);
 			}
-		
+
             lcd_adjust_brightness(0);
             lcd_disable();
 			ui_on=0;
@@ -699,8 +691,8 @@ static void Encore_boot(void)
     if(cap_ok){
 	int opt, ret;
 		unsigned char key;
-		char *dev_list[2] =  {" eMMC                        ", " SD                          "};
-		char *mode_list[3] = {" normal                      ", " Recovery (uRecImg/uRecRam)  ", " Alternate (uAltImg/uAltRam) "};
+		char *dev_list[2] =  {" eMMC (internal storage)     ", " SD (removable storage)      "};
+		char *mode_list[3] = {" Normal (uImage/uRamdisk)    ", " Recovery (uRecImg/uRecRam)  ", " Alternate (uAltImg/uAltRam) "};
 		int dev_idx = 0; int mode_idx = 0; int *idx;
 		lcd_is_enabled = 1;
 		if (user_req) {
@@ -718,13 +710,18 @@ static void Encore_boot(void)
 				{ user_req = 0; mode_idx =2;
 				 lcd_console_setpos(40, 25);
 				 lcd_puts("Booting into alternate..."); }	// alt boot
-			else
+			else //they pressed buttons, but none of the above
 				{ user_req = 0; mode_idx=0;
 				 lcd_console_setpos(40, 25);
 				 lcd_puts("    Booting normally...");
 				 setenv("forcerecovery", "0");
-				 setenv("customboot", "0");}		// normal boot
-		}
+				 setenv("customboot", "0");}		        // normal boot (keypress)
+		} else {  // no keypress at all, no menu...
+				 lcd_console_setpos(40, 25);			// normal boot (no keypress)
+				 lcd_puts("         Loading...");		// note this isn't very efficient
+				 setenv("forcerecovery", "0");
+				 setenv("customboot", "0");
+                       }
 
 		if (user_req)  {
  			// menu was selected...
@@ -732,19 +729,37 @@ static void Encore_boot(void)
 			lcd_console_setpos(0, 0);
 			lcd_puts(" Boot Options\n");
 			lcd_puts(" ------------\n\n");
-			lcd_puts(" Boot Device:\n"); // row 3
-			lcd_puts(" Boot Mode  :\n"); // row 4
+			lcd_puts(" Boot Device :\n"); // row 3
+			lcd_puts(" Boot Mode   :\n"); // row 4
 			lcd_puts("\n Boot Now\n"); //row 6
-			lcd_console_setpos(15, 0);
+			lcd_console_setpos(10, 0);
 			lcd_puts(" Instructions\n");
 			lcd_puts(" ------------\n\n");
 			lcd_puts(" VOL- moves down.\n");
 			lcd_puts(" VOL+ moves up.\n");
 			lcd_puts(" HOME toggles your selection.\n");
-			lcd_puts("\n\n NOTE: To enable the alternative boot, add a kernel and ramdisk to\n");
-			lcd_puts("       the first partition of your boot volume, named uAltImg\n");
-			lcd_puts("       (for the kernel) and uAltRam (for the ramdisk).");
-			lcd_console_setpos(55, 0);
+			lcd_puts("\n\n\n\n\n\n WHAT IS ALTERNATE BOOT?\n\n");
+			lcd_puts("       It's an option to boot using an alternative kernel and ramdisk.\n");
+			lcd_puts("       It can be used for overclocked kernels or secondary OS boots.\n\n");
+			lcd_puts("       To enable, add to the first partition of your boot volume:\n\n");
+			lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
+			lcd_puts("       uAltImg");
+			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+			lcd_puts(" -- (the alternate kernel)\n");
+			lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
+			lcd_puts("       uAltRam");
+			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+			lcd_puts(" -- (the alternate ramdisk)\n\n");
+			lcd_puts("       Without these files, the Alt. option will result in a failed boot.");
+			lcd_puts("\n\n\n CAN I SET A DEFAULT BOOT DEVICE?\n\n");
+			lcd_puts("       Yes.  You may set the default boot device by creating a file:\n\n");
+			lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
+			lcd_puts("       u-boot.device\n\n");
+			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+			lcd_puts("       Put it in the first partition of your boot volume.\n\n");
+			lcd_puts("       Setting this file to \"0\" means default boot device is SD card.\n");
+			lcd_puts("       Setting this file to \"1\" means default boot device is eMMC.");
+			lcd_console_setpos(60, 0);
 			lcd_puts(" ------\n Encore U-Boot Menu by j4mm3r.\n 1.2 port + extras by fattire");
 			opt = 0;
 			idx = &dev_idx;
@@ -752,25 +767,25 @@ static void Encore_boot(void)
 			while(opt != 2)
 			{
 				if(idx == &dev_idx && opt == 0)
-					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_GREEN);
+					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_CYAN);
 				else
-					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
-				lcd_console_setpos(3, 13);
+					lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+				lcd_console_setpos(3, 14);
 				lcd_puts(dev_list[dev_idx]);
 
 				if(idx == &mode_idx && opt == 0)
-					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_GREEN);
+					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_CYAN);
 				else
-					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
-				lcd_console_setpos(4, 13);
+					lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+				lcd_console_setpos(4, 14);
 				lcd_puts(mode_list[mode_idx]);
 
-				lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
+				lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
 				lcd_console_setpos(6, 0);
 				if(opt == 1) {
-					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_GREEN);
+					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_CYAN);
 					lcd_puts(" Boot Now.  Press Home to confirm.");
-					lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK); }
+					lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK); }
 				else
 					lcd_puts(" Boot Now                         ");
 
@@ -825,9 +840,9 @@ static void Encore_boot(void)
 				} while(!ret);
 			}
 
-			lcd_console_setcolor(CONSOLE_COLOR_GREEN, CONSOLE_COLOR_BLACK);
+			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
 			lcd_console_setpos(6, 0);
-			lcd_puts(" Booting.  One moment...                           ");
+			lcd_puts(" Booting.  One moment...                        ");
 			// override u-boot.order if present
 			setenv("customboot", "1");
 		
