@@ -204,7 +204,7 @@
 //This can be used as loading address for gas gauge history data
 #define LOAD_ADDRESS		0x81C00000
 
-#define CONFIG_BOOTCOMMAND "run autodetectmmc; run readtokens; run checkbootcount; run checkrom; run checkupdate; run checkbcb; run ${bootvar}"
+#define CONFIG_BOOTCOMMAND "run autodetectmmc; run checkforalt; run readtokens; run checkbootcount; run checkrom; run checkupdate; run checkbcb; run ${bootvar}"
 //#define CONFIG_BOOTARGS "console=ttyS0,115200n8 root=/dev/mmcblk0p2 rw rootdelay=1 mem=256M init=/init"
 #define CONFIG_BOOTARGS ""
 
@@ -254,10 +254,26 @@ else\
  setenv mmcromdev 1;\
 fi;\
 mmcinit $mmcbootdev;\
+mmcinit ${mmcromdev};\
 if itest ${customboot} -eq 0; then\
- if fatload mmc $mmcbootdev 0x81c00000 u-boot.device 1; then \
+ if fatload mmc ${mmcromdev}:2 0x81c00000 u-boot.device 1; then \
   setenvmem mmcbootdev 0x81c00000 1;\
   setenvmem mmcromdev 0x81c00000 1;\
+ fi;\
+fi"\
+	"\0" \
+\
+"checkforalt=\
+if itest ${customboot} -eq 0; then\
+ mmcinit ${mmcromdev};\
+ if fatload mmc ${mmcromdev}:2 0x81c00000 u-boot.altboot 1; then \
+   mmcinit ${mmcbootdev};\
+   fatload mmc ${mmcbootdev} 0x81c00000 uAltImg 1;\
+   if itest.l $? -ne 0; then\
+     echo Missing uAltImg so no altboot;\
+   else\
+    setenv bootvar altboot;\
+   fi;\
  fi;\
 fi"\
 	"\0" \
