@@ -56,6 +56,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #endif
 
 #include <tps65921.h>
+#include "menu.h"
 
 #if defined(CONFIG_BOOT_RETRY_TIME) && defined(CONFIG_RESET_TO_RETRY)
 extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);		/* for do_reset() prototype */
@@ -571,11 +572,9 @@ static void Encore_boot(void)
 	/*we have enough juice in battery*/
 	if(cap_ok){
 		     /*since we have enough juice, we boost up the brightness*/
-		     lcd_adjust_brightness(80);
-		     bitmap_plot (864,140,0); //1008,133
+		     lcd_adjust_brightness(255);
+		     bitmap_plot (764,140,0); //864,140
 		     boot_normal = 1;
-	             // Now that they see a boot screen, give the user a chance to hold down keys
-		     udelay(2000*1000);
    }
    else{
 		if(charger_type){
@@ -623,7 +622,7 @@ static void Encore_boot(void)
 	    	  			lcd_enable();
 	    	  			lcd_adjust_brightness(40);
 	    	  			udelay(3000*1000);
-                        lcd_adjust_brightness(0);
+                        		lcd_adjust_brightness(0);
 	    	  			lcd_disable();
 	    	  			ui_on=0;
 	    	  			}
@@ -664,7 +663,7 @@ static void Encore_boot(void)
        printf("BOOTING!\n");
        if(!ui_on) {
 	   lcd_enable();
-	   lcd_adjust_brightness(80);
+	   lcd_adjust_brightness(255);
 	   ui_on=1;
 	   }
 
@@ -685,34 +684,54 @@ static void Encore_boot(void)
 	}
     /*battery ok to boot*/
     if(cap_ok){
-	int opt, ret;
+		int result=0;
+		int opt, ret;
 		unsigned char key;
 		char *dev_list[2] =  {" eMMC (internal storage)     ", " SD (removable storage)      "};
 		char *mode_list[3] = {" Normal (uImage/uRamdisk)    ", " Recovery (uRecImg/uRecRam)  ", " Alternate (uAltImg/uAltRam) "};
 		int dev_idx = 0; int mode_idx = 0; int *idx;
 		lcd_is_enabled = 1;
+
+   lcd_console_setpos(0, 1); //indent slightly
+   lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
+   u32 boot_device = __raw_readl(0x480029c0) & 0xff;
+   if (boot_device == 6) { // 5 is emmc
+    lcd_putc('S');
+    } else {
+    lcd_putc('E'); }
+    char s [5];
+    static char buf[64];
+    unsigned long bootcount = 0; // Set bootcount to limit+1 per default, in case we fail to read it apply factory fallback 
+    sprintf(buf, "mmcinit 0; fatload mmc 0:2 0x%08x devconf/BootCnt 4", &bootcount);
+    sprintf(s, " %u", bootcount);
+    lcd_puts(s);
+		     lcd_console_setpos(59, 31);
+		     lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+		     lcd_puts("Hold ^ for menu");
+	             // Now that they see a boot screen, give the user a chance to hold down keys
+		     udelay(2000*1000);
                 tps65921_keypad_keys_pressed(&key_pad);
 			if 	(key_pad&HOME_KEY && (gpio_pin_read(14)))
 				{ mode_idx = 1;
-				 lcd_console_setpos(40, 25);
+				 lcd_console_setpos(45, 25);
 				 lcd_puts(" Booting into recovery..."); }	// recovery boot
 			else if (key_pad&HOME_KEY && (!gpio_pin_read(14)))
 				{ user_req = 1; 
-				 lcd_console_setpos(40, 25);
+				 lcd_console_setpos(45, 25);
 				 lcd_puts("   Entering boot menu...");
 				udelay(1000*1000);}  				// use the menu
 			else if (key_pad&VOLUP_KEY && key_pad&VOLDN_KEY)
-				{ mode_idx =2;
-				 lcd_console_setpos(40, 25);
+				{ mode_idx = 2;
+				 lcd_console_setpos(45, 25);
 				 lcd_puts("Booting into alternate..."); }	// alt boot
 			else // none of the above
 				{
-				 lcd_console_setpos(40, 25);
+				 lcd_console_setpos(45, 25);
 				 lcd_puts("        Loading...");
 				 setenv("forcerecovery", "0");
 				 setenv("customboot", "0"); }		        // normal boot (keypress)
 
-		if (user_req)  {                  // menu was selected
+		if (user_req)  {  /*                // menu was selected
 			lcd_clear (NULL, 1, 1, NULL);
 			lcd_console_setpos(0, 0);
 			lcd_puts(" Boot Menu\n");
@@ -851,7 +870,63 @@ static void Encore_boot(void)
 
 
 		} // end of menu
+*/
 
+		result = do_menu();
+
+	switch(result) {
+	case BOOT_SD_NORMAL:
+		setenv("forcerecovery", "0");
+		setenv("customboot", "1");
+		dev_idx = 1;
+ 		mode_idx = 0;
+		break;
+
+        case BOOT_SD_RECOVERY:
+                mode_idx = 1;
+		dev_idx = 1;
+		setenv("customboot", "1");
+                break;
+
+	case BOOT_SD_ALTBOOT:
+		mode_idx = 2;
+		dev_idx = 1;
+		setenv("customboot", "1");
+		break;
+
+	case BOOT_EMMC_NORMAL:
+		setenv("forcerecovery", "0");
+		setenv("customboot", "1");
+		dev_idx = 0;
+		mode_idx = 0;
+		break;
+
+	case BOOT_EMMC_RECOVERY:
+		mode_idx = 1;
+		dev_idx = 0;
+		setenv("customboot", "1");
+		break;
+
+	case BOOT_EMMC_ALTBOOT:  // no 512K offset, this is just a file.
+		mode_idx = 2;
+		dev_idx = 0;
+		setenv("customboot", "1");
+		break;
+
+/*	case BOOT_FASTBOOT:
+		display_feedback(BOOT_FASTBOOT);
+                run_command("fastboot", 0);
+		break; */
+	case INVALID:
+	default:
+		printf("Aborting boot!\n");
+	}
+
+		if(dev_idx == 0)
+			setenv("bootdevice", "eMMC");
+		else
+			setenv("bootdevice", "SD");
+	} // end of menu
 		// If recovery is selected
 		if(mode_idx == 1)
 			setenv("forcerecovery", "2");

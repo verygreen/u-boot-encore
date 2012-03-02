@@ -68,9 +68,12 @@ static volatile u32 *otg_interfsel	= (volatile u32 *) OMAP34XX_OTG_INTERFSEL;
 static volatile u32 *otg_forcestdby	= (volatile u32 *) OMAP34XX_OTG_FORCESTDBY;
 
 /* This is the TI USB vendor id */
-#define DEVICE_VENDOR_ID  0x0451
+//#define DEVICE_VENDOR_ID  0x0451
+/* This is the Google USB vendor id.  30 fastboots and pokey9000 all agree. */ 
+#define DEVICE_VENDOR_ID 0x18d1
 /* This is just made up.. */
-#define DEVICE_PRODUCT_ID 0xCAFE
+//#define DEVICE_PRODUCT_ID 0xCAFE
+#define DEVICE_PRODUCT_ID 0x0100;
 /* This is just made up.. */
 #define DEVICE_BCD        0x0311;
 
@@ -1070,10 +1073,11 @@ void fastboot_shutdown(void)
 
 int fastboot_is_highspeed(void)
 {
-	int ret = 0;
-	if (*pwr & MUSB_POWER_HSMODE)
-		ret = 1;
-	return ret;
+//	int ret = 0;
+//	if (*pwr & MUSB_POWER_HSMODE)
+//		ret = 1;
+//	return ret;
+return 1;
 }
 
 int fastboot_fifo_size(void)
