@@ -65,10 +65,10 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 		int ignore_last_option = 1;  // assume file is missing
 		int ret = 0;
 
-  /*      if (twl6030_hw_status(&pwron)) {
-                lcd_console_setpos(MENUTOP, 2);
-                lcd_puts("Error: Failed to read twl6030 hw_status\n");
-        } */
+                /* clear instructions at bottom */
+                lcd_console_setpos(59, 31);
+                lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_BLACK);
+                lcd_puts("Hold ^ for menu");
 
 		if (read_u_boot_device() != 'X') // if that file is there
 			{ ignore_last_option = 0;};

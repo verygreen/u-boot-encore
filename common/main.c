@@ -927,6 +927,14 @@ static void Encore_boot(void)
 		else
 			setenv("bootdevice", "SD");
 	} // end of menu
+
+
+                /* clear instructions at bottom */
+                lcd_console_setpos(59, 31);
+                lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_BLACK);
+                lcd_puts("Hold ^ for menu");
+
+
 		// If recovery is selected
 		if(mode_idx == 1)
 			setenv("forcerecovery", "2");
