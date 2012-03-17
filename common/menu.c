@@ -95,7 +95,7 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 		lcd_console_setpos(MENUTOP+10, INDENT);
 			lcd_puts(" VOL-UP moves to previous item");
 		lcd_console_setpos(MENUTOP+11, INDENT);
-			lcd_puts(" MENU button selects");
+			lcd_puts(" Press ^ to select");
 		lcd_console_setpos(60, 0);
 			lcd_puts(" ------\n Menu by j4mm3r.\n Redone by fattire - ALPHA (" __TIMESTAMP__  ") - ** EXPERIMENTAL **");
 
