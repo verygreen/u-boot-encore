@@ -272,7 +272,11 @@ if itest ${customboot} -eq 0; then\
    if itest.l $? -ne 0; then\
      echo Missing uAltImg so no altboot;\
    else\
-    setenv bootvar altboot;\
+     if itest.s ${bootvar} == \"altboot\"; then\
+       setenv bootvar normalboot;\
+     else\
+       setenv bootvar altboot;\
+     fi;\
    fi;\
  fi;\
 fi"\

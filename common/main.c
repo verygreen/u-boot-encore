@@ -723,6 +723,7 @@ static void Encore_boot(void)
 			else if (key_pad&VOLUP_KEY && key_pad&VOLDN_KEY)
 				{ mode_idx = 2;
 				 lcd_console_setpos(45, 25);
+				 setenv("customboot", "0");
 				 lcd_puts("Booting into alternate..."); }	// alt boot
 			else // none of the above
 				{
