@@ -35,5 +35,11 @@ enum boot_action {
 	INVALID,
 };
 
+enum highlight_type {
+  HIGHLIGHT_NONE,
+  HIGHLIGHT_CYAN,
+  HIGHLIGHT_GREEN
+};
+
 char read_u_boot_device(void);
 int write_u_boot_device(char value);

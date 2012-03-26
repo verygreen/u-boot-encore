@@ -34,16 +34,6 @@
 #define INDENT		25
 #define MENUTOP		42
 
-char read_u_boot_device(void) { return 'X'; }
-int write_u_boot_device(char nothing) { return 0; }
-
-// -----------------------------------
-
-
-int do_menu() {
-
-	unsigned char key = 0;
-
 //	lcd_bl_set_brightness(255);
 //	lcd_console_init();
 
@@ -58,6 +48,44 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 //				 " Start fastboot           ",
 				 " default boot from:  ",
 				};
+
+char read_u_boot_device(void) { return 'X'; }
+int write_u_boot_device(char nothing) { return 0; }
+
+// -----------------------------------
+
+void print_u_boot_dev(void) {
+	if (read_u_boot_device() == '1') {
+		lcd_puts("EMMC ");
+	} else {
+		lcd_puts("SD   ");
+	}
+}
+
+
+void highlight_boot_line(int cursor, enum highlight_type highl) {
+	switch (highl) {
+	case HIGHLIGHT_GREEN:
+		lcd_console_setcolor( CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+		break;
+	case HIGHLIGHT_CYAN:
+		lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_CYAN);
+		break;
+	case HIGHLIGHT_NONE:
+	default:
+		lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+		break;
+	}
+	lcd_console_setpos(MENUTOP+cursor, INDENT);
+	lcd_puts(opt_list[cursor]);
+	if (cursor == CHANGE_BOOT_DEV) {
+		print_u_boot_dev();
+	}
+}
+
+int do_menu() {
+
+	unsigned char key = 0;
 
 		int x;
 		int cursor = 0;
@@ -85,10 +113,7 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 	            lcd_puts(opt_list[x]);
                    }
 		if (ignore_last_option == 0) {
-			if (read_u_boot_device() == '1') {
-				lcd_puts("EMMC ");
-				} else {
-				lcd_puts("SD   "); }
+			print_u_boot_dev();
 		}
 		lcd_console_setpos(MENUTOP+9, INDENT);
 			lcd_puts(" VOL-DOWN moves to next item");
@@ -102,9 +127,7 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 		cursor=0;
 
 		// highlight first option
-		lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_CYAN);
-		lcd_console_setpos(MENUTOP, INDENT);
-	        lcd_puts(opt_list[0]);
+		highlight_boot_line(cursor, HIGHLIGHT_CYAN);
 
 		do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  // wait for release
 
@@ -114,27 +137,11 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 		if (key & VOLDN_KEY) // button is pressed
 		   {
 			// unhighlight current option
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_console_setpos(MENUTOP+cursor, INDENT);
-	       		lcd_puts(opt_list[cursor]);
-			if (cursor == CHANGE_BOOT_DEV) {
-				if (read_u_boot_device() == '1') {
-					lcd_puts("EMMC ");
-					} else {
-					lcd_puts("SD   "); }
-				}
+			highlight_boot_line(cursor, HIGHLIGHT_NONE);
 			cursor++;
 			if (cursor == NUM_OPTS - ignore_last_option) cursor = 0;
 			// highlight new option
-			lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_CYAN);
-			lcd_console_setpos(MENUTOP+cursor, INDENT);
-			lcd_puts(opt_list[cursor]);
-			if (cursor == CHANGE_BOOT_DEV) {
-					if (read_u_boot_device() == '1') {
-					lcd_puts("EMMC ");
-					} else {
-					lcd_puts("SD   "); }
-				}
+			highlight_boot_line(cursor, HIGHLIGHT_CYAN);
 			do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  //wait for release
 
 		   }
@@ -142,27 +149,11 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 		if (key & VOLUP_KEY) // button is pressed
 		   {
 			// unhighlight current option
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_console_setpos(MENUTOP+cursor, INDENT);
-	       		lcd_puts(opt_list[cursor]);
-			if (cursor == CHANGE_BOOT_DEV) {
-				if (read_u_boot_device() == '1') {
-					lcd_puts("EMMC ");
-					} else {
-					lcd_puts("SD   "); }
-				}
+			highlight_boot_line(cursor, HIGHLIGHT_NONE);
 			cursor--;
 			if (cursor <0) cursor = (NUM_OPTS-ignore_last_option-1);
 			// highlight new option
-			lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_CYAN);
-			lcd_console_setpos(MENUTOP+cursor, INDENT);
-			lcd_puts(opt_list[cursor]);
-			if (cursor == CHANGE_BOOT_DEV) {
-					if (read_u_boot_device() == '1') {
-					lcd_puts("EMMC ");
-					} else {
-					lcd_puts("SD   "); }
-				}
+			highlight_boot_line(cursor, HIGHLIGHT_CYAN);
 			do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  //wait for release
 
 		   }
@@ -171,21 +162,14 @@ char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
 			if (read_u_boot_device() == '1') {write_u_boot_device('0');}
 				else {write_u_boot_device('1'); }
 			udelay(RESET_TICK);
-			lcd_console_setcolor( CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
-			lcd_console_setpos(MENUTOP+CHANGE_BOOT_DEV, INDENT);
-			lcd_puts(opt_list[CHANGE_BOOT_DEV]);
-			if (read_u_boot_device() == '1') {
-					lcd_puts("EMMC ");
-					} else {
-					lcd_puts("SD   "); }
+			highlight_boot_line(cursor, HIGHLIGHT_GREEN);
 			do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  //wait for release
 		}
 			udelay(RESET_TICK);
 
 		} while (!(key & HOME_KEY) || (cursor == CHANGE_BOOT_DEV));  // power button to select
-		lcd_console_setcolor( CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
-		lcd_console_setpos(MENUTOP+cursor, INDENT);
-		lcd_puts(opt_list[cursor]);
+
+		highlight_boot_line(cursor, HIGHLIGHT_GREEN);
 
  	lcd_console_setpos(MENUTOP+9, 25);
 	lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
