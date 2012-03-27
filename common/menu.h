@@ -31,15 +31,24 @@ enum boot_action {
 	BOOT_SD_RECOVERY,
 	BOOT_SD_ALTBOOT,
 //	BOOT_FASTBOOT,
+	DEFAULT_BOOT_STR,
 	CHANGE_BOOT_DEV,
+	CHANGE_BOOT_IMG,
 	INVALID,
 };
 
 enum highlight_type {
   HIGHLIGHT_NONE,
+  HIGHLIGHT_GRAY,
   HIGHLIGHT_CYAN,
   HIGHLIGHT_GREEN
 };
 
-char read_u_boot_device(void);
-int write_u_boot_device(char value);
+enum image_dev {
+  DEV_SD,
+  DEV_EMMC
+};
+
+int check_device_image(enum image_dev device, const char* file);
+char read_u_boot_file(const char* file);
+int write_u_boot_file(const char* file, char value);
