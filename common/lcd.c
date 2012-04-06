@@ -26,8 +26,6 @@
 /* ** HEADER FILES							*/
 /************************************************************************/
 
-//#define DEBUG
-
 #include <config.h>
 #include <common.h>
 #include <command.h>
@@ -48,10 +46,6 @@
 #if defined(CONFIG_MPC823)
 #include <lcdvideo.h>
 #endif
-
-//#include <bmp_layout.h>
-
-//#ifdef CONFIG_LCD
 
 #if defined(CONFIG_ATMEL_LCD)
 #include <atmel_lcdc.h>
@@ -119,8 +113,8 @@ static int lcd_getfgcolor (void);
 #endif	/* NOT_USED_SO_FAR */
 
 static uchar c_orient = O_LANDSCAPE;
-static uchar c_max_rows; // = CONSOLE_ROWS;
-static uchar c_max_cols; // = CONSOLE_COLS;
+static uchar c_max_rows;
+static uchar c_max_cols;
 static ushort x_offset = 0;
 static ushort y_offset = 0;
 static uchar  row_offset = 0;
@@ -151,7 +145,7 @@ static inline void console_back (void)
         }
     }
 
-    lcd_putc_xy (console_col * VIDEO_FONT_WIDTH,
+    lcd_drawchar(console_col * VIDEO_FONT_WIDTH,
                  console_row * VIDEO_FONT_HEIGHT, ' ');
 }
 
@@ -227,7 +221,7 @@ void lcd_putc (const char c)
         return;
 
     default:
-        lcd_drawchar(console_col*VIDEO_FONT_WIDTH,
+        lcd_drawchar(console_col * VIDEO_FONT_WIDTH,
                      console_row * VIDEO_FONT_HEIGHT,
                      c);
         if (++console_col >= c_max_cols) {
