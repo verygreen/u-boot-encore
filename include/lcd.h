@@ -224,12 +224,13 @@ void	lcd_disable	(void);
 #endif
 
 
-/* int	lcd_init	(void *lcdbase); */
 void	lcd_putc	(const char c);
 void	lcd_puts	(const char *s);
 void	lcd_printf	(const char *fmt, ...);
+void    lcd_setprops(uchar orient, ushort xoff, ushort yoff);
 void    lcd_console_setpos  (short row, short col);
 void    lcd_console_setcolor(int fg, int bg);
+void    lcd_bitmap_plot(ushort x, ushort y, uchar which);
 
 
 #ifdef CONFIG_3621EVT1A
@@ -340,12 +341,12 @@ void lcd_show_board_info(void);
 /************************************************************************/
 /* ** CONSOLE DEFINITIONS & FUNCTIONS					*/
 /************************************************************************/
-//#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
-//# define CONSOLE_ROWS		((panel_info.vl_row-BMP_LOGO_HEIGHT_B) \
-//					/ VIDEO_FONT_HEIGHT)
-//#else
+#if defined(CONFIG_LCD_LOGO) && !defined(CONFIG_LCD_INFO_BELOW_LOGO)
+# define CONSOLE_ROWS		((panel_info.vl_row-BMP_LOGO_HEIGHT_B) \
+					/ VIDEO_FONT_HEIGHT)
+#else
 # define CONSOLE_ROWS		(panel_info.vl_row / VIDEO_FONT_HEIGHT)
-//#endif
+#endif
 
 #define CONSOLE_COLS		(panel_info.vl_col / VIDEO_FONT_WIDTH)
 #define CONSOLE_ROW_SIZE	(VIDEO_FONT_HEIGHT * lcd_line_length)
