@@ -207,7 +207,7 @@ int do_menu() {
 	lcd_puts(" Press ^ to select");
 	lcd_console_setpos(62, 0);
 	lcd_puts(" Menu by j4mm3r, fattire, tonsofquestions, mik_os, Rebellos, HD.\n"
-			 " ** EXPERIMENTAL ** (" __TIMESTAMP__ ")");
+			 " ** EXPERIMENTAL ** (" __DATE__ " " __TIME__ ")");
 
 	cursor = 0;
 
