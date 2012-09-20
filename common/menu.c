@@ -1,7 +1,7 @@
 /*
  * Original Boot Menu code by j3mm3r
  * (C) Copyright 2011 j3mm3r
- * 1.2 Enhancements/NC port by fattire
+ * 1.2 Enhancements/NC & NT port by fattire & Rebellos
  * (C) Copyright 2011-2012 The CyanogenMod Project
  *
  *
@@ -24,7 +24,7 @@
  * MA 02111-1307 USA
  */
 
-#include "menu.h"
+#include <menu.h>
 
 #include <common.h>
 #include <lcd.h>
@@ -32,54 +32,64 @@
 #include "power/gpio.h"
 
 #define INDENT		25
-#define MENUTOP		42
+#define MENUTOP		38
 
-//	lcd_bl_set_brightness(255);
-//	lcd_console_init();
+#define HOME_BUTTON	32
+#define POWER_BUTTON	29
+#define N_KEY		HOME_KEY
 
-#define NUM_OPTS		9  //number of boot options
+#define NUM_OPTS	9  //number of boot options
 
-char *opt_list[NUM_OPTS] = 	{" Internal eMMC Normal     ",
-				 " Internal eMMC Recovery   ",
-				 " Internal eMMC Alternate  ",
-				 " SD Card Normal           ",
-				 " SD Card Recovery         ",
-				 " SD Card Alternate        ",
-//				 " Start fastboot           ",
-				 " Default Boot From:       ",
-				 "       Device: ",
-				 "        Image: ",
-				};
+char *opt_list[NUM_OPTS] = { " Internal eMMC Normal     ",
+		" Internal eMMC Recovery   ", " Internal eMMC Alternate  ",
+		" SD Card Normal           ", " SD Card Recovery         ",
+		" SD Card Alternate        ", //" Start fastboot           ",
+		" Default Boot From:       ", "       Device: ",
+		"        Image: ", };
 
 // Shared sprintf buffer for fatsave/load
 static char buf[64];
 
 extern char lcd_is_enabled;
 
+unsigned char get_keys_pressed(unsigned char* key) {
+
+        return tps65921_keypad_keys_pressed(key);
+/*	if (gpio_read(HOME_BUTTON) == 0)
+		(*key) |= N_KEY;
+	if (gpio_read(POWER_BUTTON) == 1)
+		(*key) |= POWER_KEY;
+	if (gpio_read(ROW0) == 0)
+		(*key) |= VOLUP_KEY;
+	if (gpio_read(ROW1) == 0)
+		(*key) |= VOLDN_KEY; */
+}
+
 int check_device_image(enum image_dev device, const char* file) {
-	char res = ((device == DEV_SD) ? 0 : 1);
-	lcd_is_enabled = 0;
-	sprintf(buf, "mmcinit %d; fatload mmc %d 0x%08x %s 1", res, res, &res, file);
-	if (run_command(buf, 0)) {  //no such file
-		res = 0;
-	} else {
-		res = 1;
-	}
-	lcd_is_enabled = 1;
-	return res;
+    char res = ((device == DEV_SD) ? 0 : 1); //0=sdcard, 1=emmc
+//    char vax = ((device == DEV_SD) ? 1 : 2); //1=p1, 2=p2 (bootdata partition)
+    lcd_is_enabled = 0;
+//    sprintf(buf, "mmcinit %d; fatload mmc %d:%d 0x%08x %s 1", res, res, vax, &res, file);
+    sprintf(buf, "mmcinit %d; fatload mmc %d 0x%08x %s 1", res, res, &res, file);
+    if (run_command(buf, 0)) { //no such file
+        res = 0;
+    } else {
+        res = 1;
+    }
+    lcd_is_enabled = 1;
+    return res;
 }
 
 char read_u_boot_file(const char* file) {
 	char res;
 	lcd_is_enabled = 0;
 	sprintf(buf, "mmcinit 1; fatload mmc 1:2 0x%08x %s 1", &res, file);
-	if (run_command(buf, 0)) {  //no such file
+	if (run_command(buf, 0)) { //no such file
 		res = 'X'; // this is going to mean no such file, or I guess the file could have 'X'...
 	}
 	lcd_is_enabled = 1;
 	return res;
 }
-
 
 int write_u_boot_file(const char* file, char value) {
 	lcd_is_enabled = 0;
@@ -110,14 +120,13 @@ void print_u_boot_img(void) {
 	}
 }
 
-
 void highlight_boot_line(int cursor, enum highlight_type highl) {
 	switch (highl) {
 	case HIGHLIGHT_GRAY:
 		lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
 		break;
 	case HIGHLIGHT_GREEN:
-		lcd_console_setcolor( CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+		lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
 		break;
 	case HIGHLIGHT_CYAN:
 		lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_CYAN);
@@ -127,7 +136,7 @@ void highlight_boot_line(int cursor, enum highlight_type highl) {
 		lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
 		break;
 	}
-	lcd_console_setpos(MENUTOP+cursor, INDENT);
+	lcd_console_setpos(MENUTOP + cursor, INDENT);
 	lcd_puts(opt_list[cursor]);
 	if (cursor == CHANGE_BOOT_DEV) {
 		print_u_boot_dev();
@@ -138,16 +147,26 @@ void highlight_boot_line(int cursor, enum highlight_type highl) {
 }
 
 int do_menu() {
-
 	unsigned char key = 0;
 
-		int valid_opt[NUM_OPTS] = {0};
-		int x;
-		int cursor = 0;
-		u8 pwron = 0;
-		int ret = 0;
+	int valid_opt[NUM_OPTS] = { 0 };
+	int x;
+	int cursor = 0;
+	u8 pwron = 0;
 
-//		valid_opt[BOOT_FASTBOOT] = 1;
+	lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+	// lcd_clear (NULL, 1, 1, NULL);
+	lcd_console_setpos(MENUTOP - 3, INDENT);
+	lcd_puts(" Boot Menu");
+	lcd_console_setpos(MENUTOP - 2, INDENT);
+	lcd_puts(" ---------             ");
+
+/*	valid_opt[BOOT_FASTBOOT] = 0;*/
+
+	valid_opt[BOOT_EMMC_NORMAL] = 1;
+	valid_opt[BOOT_EMMC_RECOVERY] = 1;
+
+
 
 		if (check_device_image(DEV_EMMC, "uImage") && check_device_image(DEV_EMMC, "uRamdisk"))
 			valid_opt[BOOT_EMMC_NORMAL] = 1;
@@ -168,132 +187,142 @@ int do_menu() {
 		if (read_u_boot_file("u-boot.altboot") != 'X') // if that file is there
 			valid_opt[CHANGE_BOOT_IMG] = 1;
 
-                /* clear instructions at bottom */
-                lcd_console_setpos(59, 31);
-                lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_BLACK);
-                lcd_puts("Hold ^ for menu");
-
-		lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-		// lcd_clear (NULL, 1, 1, NULL);
-		lcd_console_setpos(MENUTOP-3, INDENT);
-			lcd_puts(" Boot Menu");
-		lcd_console_setpos(MENUTOP-2, INDENT);
-			lcd_puts(" ---------             ");
-
-		for (x=0; x < NUM_OPTS; x++) {
-		    lcd_console_setpos(MENUTOP+x, INDENT);
-		    if ((!valid_opt[CHANGE_BOOT_DEV] && ! valid_opt[CHANGE_BOOT_IMG]) &&
-			(x == DEFAULT_BOOT_STR || x == CHANGE_BOOT_DEV || x == CHANGE_BOOT_IMG))
+	for (x = 0; x < NUM_OPTS; x++) {
+		lcd_console_setpos(MENUTOP + x, INDENT);
+		if ((!valid_opt[CHANGE_BOOT_DEV] && !valid_opt[CHANGE_BOOT_IMG]) && (x
+				== DEFAULT_BOOT_STR || x == CHANGE_BOOT_DEV || x
+				== CHANGE_BOOT_IMG))
 			continue;
-		    if (valid_opt[x])
+		if (valid_opt[x])
 			highlight_boot_line(x, HIGHLIGHT_NONE);
-		    else
+		else
 			highlight_boot_line(x, HIGHLIGHT_GRAY);
-                   }
+	}
 
-		lcd_console_setpos(MENUTOP+NUM_OPTS+2, INDENT);
-			lcd_puts(" VOL-DOWN moves to next item");
-		lcd_console_setpos(MENUTOP+NUM_OPTS+3, INDENT);
-			lcd_puts(" VOL-UP moves to previous item");
-		lcd_console_setpos(MENUTOP+NUM_OPTS+4, INDENT);
-			lcd_puts(" Press ^ to select");
-		lcd_console_setpos(60, 0);
-			lcd_puts(" ------\n Menu by j4mm3r.\n Redone by fattire - ALPHA (" __TIMESTAMP__  ") - ** EXPERIMENTAL **");
+	lcd_console_setpos(MENUTOP + NUM_OPTS + 2, INDENT);
+	lcd_puts(" VOL-DOWN moves to next item");
+	lcd_console_setpos(MENUTOP + NUM_OPTS + 3, INDENT);
+	lcd_puts(" VOL-UP moves to previous item");
+	lcd_console_setpos(MENUTOP + NUM_OPTS + 4, INDENT);
+	lcd_puts(" Press ^ to select");
+	lcd_console_setpos(62, 0);
+	lcd_puts(" Menu by j4mm3r, fattire, tonsofquestions, mik_os, Rebellos, HD.\n"
+			 " ** EXPERIMENTAL ** (" __TIMESTAMP__ ")");
 
-		cursor=0;
+	cursor = 0;
 
-		// highlight first option
-		highlight_boot_line(cursor, HIGHLIGHT_CYAN);
+	// highlight first option
+	highlight_boot_line(cursor, HIGHLIGHT_CYAN);
 
-		do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  // wait for release
+	do {
+		udelay(RESET_TICK);
+	} while (get_keys_pressed(&key)); // wait for release
 
-		do {
-		key = 0;
-		tps65921_keypad_keys_pressed(&key);
+	do {
+		get_keys_pressed(&key);
+
+		lcd_console_setpos(5, 0);
+
 		if (key & VOLDN_KEY) // button is pressed
-		   {
+		{
 			// unhighlight current option
 			highlight_boot_line(cursor, HIGHLIGHT_NONE);
-			while(!valid_opt[++cursor] || cursor >= NUM_OPTS) {
+			while (!valid_opt[++cursor] || cursor >= NUM_OPTS) {
 				if (cursor >= NUM_OPTS)
 					cursor = -1;
 
 			}
 			// highlight new option
 			highlight_boot_line(cursor, HIGHLIGHT_CYAN);
-			do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  //wait for release
+			do {
+				udelay(RESET_TICK);
+			} while (get_keys_pressed(&key)); //wait for release
 
-		   }
+		}
 
 		if (key & VOLUP_KEY) // button is pressed
-		   {
+		{
 			// unhighlight current option
 			highlight_boot_line(cursor, HIGHLIGHT_NONE);
-			while(!valid_opt[--cursor] || cursor < 0) {
+			while (!valid_opt[--cursor] || cursor < 0) {
 				if (cursor < 0)
 					cursor = NUM_OPTS;
 
 			}
 			// highlight new option
 			highlight_boot_line(cursor, HIGHLIGHT_CYAN);
-			do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  //wait for release
+			do {
+				udelay(RESET_TICK);
+			} while (get_keys_pressed(&key)); //wait for release
 
-		   }
-
-		if ((key & HOME_KEY) && (cursor == CHANGE_BOOT_DEV)) {  //selected modify device
-                        const char* file = "u-boot.device";
-			if (read_u_boot_file(file) == '1') {write_u_boot_file(file, '0');}
-				else {write_u_boot_file(file, '1'); }
-			udelay(RESET_TICK);
-			highlight_boot_line(cursor, HIGHLIGHT_GREEN);
-			do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  //wait for release
 		}
 
-		if ((key & HOME_KEY) && (cursor == CHANGE_BOOT_IMG)) {  //selected modify image
-                        const char* file = "u-boot.altboot";
-			if (read_u_boot_file(file) == '1') {write_u_boot_file(file, '0');}
-				else {write_u_boot_file(file, '1'); }
+		if ((key & N_KEY) && (cursor == CHANGE_BOOT_DEV)) { //selected modify device
+			const char* file = "u-boot.device";
+			if (read_u_boot_file(file) == '1') {
+				write_u_boot_file(file, '0');
+			} else {
+				write_u_boot_file(file, '1');
+			}
 			udelay(RESET_TICK);
 			highlight_boot_line(cursor, HIGHLIGHT_GREEN);
-			do {udelay(RESET_TICK);} while (tps65921_keypad_keys_pressed(&key));  //wait for release
+			do {
+				udelay(RESET_TICK);
+			} while (get_keys_pressed(&key)); //wait for release
 		}
+
+		if ((key & N_KEY) && (cursor == CHANGE_BOOT_IMG)) { //selected modify image
+			const char* file = "u-boot.altboot";
+			if (read_u_boot_file(file) == '1') {
+				write_u_boot_file(file, '0');
+			} else {
+				write_u_boot_file(file, '1');
+			}
 			udelay(RESET_TICK);
+			highlight_boot_line(cursor, HIGHLIGHT_GREEN);
+			do {
+				udelay(RESET_TICK);
+			} while (get_keys_pressed(&key)); //wait for release
+		}
+		udelay(RESET_TICK);
 
-		} while (!(key & HOME_KEY) || (cursor == CHANGE_BOOT_DEV) || (cursor == CHANGE_BOOT_IMG));  // power button to select
+	} while (!(key & N_KEY) || (cursor == CHANGE_BOOT_DEV) || (cursor
+			== CHANGE_BOOT_IMG));
 
-		highlight_boot_line(cursor, HIGHLIGHT_GREEN);
+	highlight_boot_line(cursor, HIGHLIGHT_GREEN);
 
- 	lcd_console_setpos(MENUTOP+NUM_OPTS+2, 25);
+	lcd_console_setpos(MENUTOP + NUM_OPTS + 2, 25);
 	lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
 
-	switch(cursor) {
+       switch(cursor) {
 
-	case BOOT_EMMC_NORMAL:
-		lcd_puts("    Loading (EMMC)...        ");
-		break;
-	case BOOT_SD_RECOVERY:
-		lcd_puts("Loading Recovery from SD...  ");
-		break;
-	case BOOT_SD_ALTBOOT:
-		lcd_puts(" Loading AltBoot from SD...  ");
-		break;
-	case BOOT_SD_NORMAL:
-		lcd_puts("     Loading (SD)...         ");
-		break;
-	case BOOT_EMMC_RECOVERY:
-		lcd_puts("Loading Recovery from EMMC...");
-		break;
-	case BOOT_EMMC_ALTBOOT:
-		lcd_puts(" Loading AltBoot from EMMC...");
-		break;
-/*	case BOOT_FASTBOOT:
-		lcd_puts(" - fastboot has started -");
-		break; */
-	default:
-		lcd_puts("        Loading...           ");
-		break;
-	}
+       case BOOT_EMMC_NORMAL:
+               lcd_puts("    Loading (EMMC)...        ");
+               break;
+       case BOOT_SD_RECOVERY:
+               lcd_puts("Loading Recovery from SD...  ");
+               break;
+       case BOOT_SD_ALTBOOT:
+               lcd_puts(" Loading AltBoot from SD...  ");
+               break;
+       case BOOT_SD_NORMAL:
+               lcd_puts("     Loading (SD)...         ");
+               break;
+       case BOOT_EMMC_RECOVERY:
+               lcd_puts("Loading Recovery from EMMC...");
+               break;
+       case BOOT_EMMC_ALTBOOT:
+               lcd_puts(" Loading AltBoot from EMMC...");
+               break;
+/*       case BOOT_FASTBOOT:
+               lcd_puts(" - fastboot has started -");
+               break;					*/
+       default:
+               lcd_puts("        Loading...           ");
+               break;
+       }
 
-	lcd_puts("    \n                                                       \n                                                        ");
-		return cursor;
+
+       lcd_puts("    \n                                                       \n                                                        ");
+	return cursor;
 }

@@ -256,9 +256,11 @@ fi;\
 mmcinit $mmcbootdev;\
 mmcinit ${mmcromdev};\
 if itest ${customboot} -eq 0; then\
- if fatload mmc ${mmcromdev}:2 0x81c00000 u-boot.device 1; then \
-  setenvmem mmcbootdev 0x81c00000 1;\
-  setenvmem mmcromdev 0x81c00000 1;\
+ if fatload mmc ${mmcromdev}:2 0x81c00000 u-boot.device 1; then\
+   if itest.s *0x81c00000 -eq \"1\"; then\
+     setenvmem mmcbootdev 0x81c00000 1;\
+     setenvmem mmcromdev 0x81c00000 1;\
+   fi;\
  fi;\
 fi"\
 	"\0" \
@@ -266,16 +268,18 @@ fi"\
 "checkforalt=\
 if itest ${customboot} -eq 0; then\
  mmcinit ${mmcromdev};\
- if fatload mmc ${mmcromdev}:2 0x81c00000 u-boot.altboot 1; then \
-   mmcinit ${mmcbootdev};\
-   fatload mmc ${mmcbootdev} 0x81c00000 uAltImg 1;\
-   if itest.l $? -ne 0; then\
-     echo Missing uAltImg so no altboot;\
-   else\
-     if itest.s ${bootvar} == \"altboot\"; then\
-       setenv bootvar normalboot;\
+ if fatload mmc ${mmcromdev}:2 0x81c00000 u-boot.altboot 1; then\
+   if itest.s *0x81c00000 -eq \"1\"; then \
+     mmcinit ${mmcbootdev};\
+     fatload mmc ${mmcbootdev} 0x81c00000 uAltImg 1;\
+     if itest.l $? -ne 0; then\
+       echo Missing uAltImg so no altboot;\
      else\
-       setenv bootvar altboot;\
+       if itest.s ${bootvar} == \"altboot\"; then\
+         setenv bootvar normalboot;\
+       else\
+         setenv bootvar altboot;\
+       fi;\
      fi;\
    fi;\
  fi;\

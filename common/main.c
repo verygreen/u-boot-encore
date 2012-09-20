@@ -56,7 +56,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #endif
 
 #include <tps65921.h>
-#include "menu.h"
+#include <menu.h>
 
 #if defined(CONFIG_BOOT_RETRY_TIME) && defined(CONFIG_RESET_TO_RETRY)
 extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);		/* for do_reset() prototype */
@@ -381,7 +381,7 @@ extern void iva_dpll_init_36XX(int, int);
 #define CHARGER_DC      0x3
 #define CHARGER_USB     0x2
 
-#define RESET_TICK (100000) // 100ms
+//#define RESET_TICK (100000) // 100ms
 #define RESET_SECOND (1000000 / RESET_TICK)
 
 // HOME * PWR need to be held for this period
@@ -696,14 +696,14 @@ static void Encore_boot(void)
    lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
    u32 boot_device = __raw_readl(0x480029c0) & 0xff;
    if (boot_device == 6) { // 5 is emmc
-    lcd_putc('S');
+    lcd_puts("SD");
     } else {
-    lcd_putc('E'); }
+    lcd_puts("EMMC"); }
     char s [5];
     static char buf[64];
-    unsigned long bootcount = 0; // Set bootcount to limit+1 per default, in case we fail to read it apply factory fallback 
+    unsigned long bootcount = 0; // Set bootcount to limit+1 per default, in case we fail to read it apply factory fallback
     sprintf(buf, "mmcinit 0; fatload mmc 0:2 0x%08x devconf/BootCnt 4", &bootcount);
-    sprintf(s, " %u", bootcount);
+    sprintf(s, " %ul", bootcount);
     lcd_puts(s);
 		     lcd_console_setpos(59, 31);
 		     lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
@@ -717,7 +717,7 @@ static void Encore_boot(void)
 				 lcd_puts(" Booting into recovery..."); }	// recovery boot
 			else if (key_pad&HOME_KEY && (!gpio_pin_read(14)))
 				{ user_req = 1; 
-				 lcd_console_setpos(45, 25);
+				 lcd_console_setpos(38, 25);
 				 lcd_puts("   Entering boot menu...");
 				udelay(1000*1000);}  				// use the menu
 			else if (key_pad&VOLUP_KEY && key_pad&VOLDN_KEY)
@@ -732,150 +732,20 @@ static void Encore_boot(void)
 				 setenv("forcerecovery", "0");
 				 setenv("customboot", "0"); }		        // normal boot (keypress)
 
-		if (user_req)  {  /*                // menu was selected
-			lcd_clear (NULL, 1, 1, NULL);
-			lcd_console_setpos(0, 0);
-			lcd_puts(" Boot Menu\n");
-			lcd_puts(" -------------\n\n");
-			lcd_puts(" Boot Device :\n"); // row 3
-			lcd_puts(" Boot Mode   :\n"); // row 4
-			lcd_puts("\n Boot Now\n"); //row 6
-			lcd_console_setpos(10, 0);
-			lcd_puts(" Instructions\n");
-			lcd_puts(" ------------\n\n");
-			lcd_puts(" VOL- moves down.\n");
-			lcd_puts(" VOL+ moves up.\n");
-			lcd_puts(" HOME toggles your selection.\n");
-			lcd_puts("\n\n\n\n WHAT IS \"ALTERNATE BOOT\"?\n\n");
-			lcd_puts("       You may create an alternate boot configuration, which\n");
-			lcd_puts("       boots from a different kernel and ramdisk. The files\n");
-			lcd_puts("       go into the 1st (/boot) partition of your boot device:\n\n");
-			lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
-			lcd_puts("       uAltImg");
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_puts(" -- (the alternate kernel)\n");
-			lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
-			lcd_puts("       uAltRam");
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_puts(" -- (the alternate ramdisk)");
-			lcd_puts("\n\n\n SET DEFAULT BOOT TO ALWAYS USE ALTERNATE BOOT\n\n");
-			lcd_puts("       Create a file in the 2nd (/rom) partition on your eMMC:\n\n");
-			lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
-			lcd_puts("       u-boot.altboot\n\n");
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_puts("       Set to \"0\" to default to normal uImage/uRamdisk boot.\n");
-			lcd_puts("       Set to \"1\" to default to alternate uAltImg/uAltRam boot.\n\n");
-			lcd_console_setcolor(CONSOLE_COLOR_ORANGE, CONSOLE_COLOR_BLACK);
-			lcd_puts("       NOTE:  If set to \"1\" and uAltImg is MISSING on your boot\n");
-			lcd_puts("       device, the boot will fall back to uImage/uRamdisk.");
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_puts("\n\n\n SET DEFAULT BOOT DEVICE TO ALWAYS USE EMMC\n\n");
-			lcd_puts("       Create a file in the 2nd (/rom) partition on your eMMC:\n\n");
-			lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_BLACK);
-			lcd_puts("       u-boot.device\n\n");
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_puts("       Set to \"0\" for normal default boot.\n");
-			lcd_puts("       Set to \"1\" for default boot from eMMC.");
-			lcd_console_setpos(60, 0);
-			lcd_puts(" ------\n Encore U-Boot Menu by j4mm3r.\n 1.2 port + extras by fattire");
-			opt = 0;
-			idx = &dev_idx;
+		if (user_req)  {
 
-			while(opt != 2)
-			{
-				if(idx == &dev_idx && opt == 0)
-					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_CYAN);
-				else
-					lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-				lcd_console_setpos(3, 14);
-				lcd_puts(dev_list[dev_idx]);
-
-				if(idx == &mode_idx && opt == 0)
-					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_CYAN);
-				else
-					lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-				lcd_console_setpos(4, 14);
-				lcd_puts(mode_list[mode_idx]);
-
-				lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-				lcd_console_setpos(6, 0);
-				if(opt == 1) {
-					lcd_console_setcolor(CONSOLE_COLOR_GRAY, CONSOLE_COLOR_CYAN);
-					lcd_puts(" Boot Now.  Press Home to confirm.");
-					lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK); }
-				else
-					lcd_puts(" Boot Now                         ");
-
-				do
-				{
-					key = 0;
-					ret = tps65921_keypad_keys_pressed(&key);
-
-					if(ret)
-					{
-						udelay(RESET_TICK*5);
-						// When home is pressed then switch selection from device to mode
-						// if already at mode, then continue booting
-						if(key & VOLDN_KEY)
-						{
-							// since selection is already at mode, we need one more
-							// press to boot, opt == 1 displays the confirmation.
-							if(idx == &mode_idx && opt == 0)
-								opt = 1;
-
-							// Advance to mode selection
-							idx = &mode_idx;
-						}
-
-						// Home iterates thru alternatives
-						if(key & HOME_KEY)
-						{
-							// opt == 1 means, its almost ready to boot.
-							if(opt == 1) opt = 2;
-
-
-							if (opt == 0) {
-							if(idx == &dev_idx)
-								*idx = (*idx+1)%2;
-							else
-								*idx = (*idx+1)%3;
-							}
-						
-						}
-
-						// Vol+ switches selection from mode to device
-						if(key & VOLUP_KEY)
-						{
-							if(idx == &mode_idx)
-								idx = &dev_idx;
-
-							// Bail before boot?
-							if(opt==1) {opt = 0;idx=&mode_idx;}
-						}
-					}
-					udelay(RESET_TICK);
-				} while(!ret);
-			}
-
-			lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
-			lcd_console_setpos(6, 0);
-			lcd_puts(" Booting.  One moment...                        ");
-			// override u-boot.order if present
-			setenv("customboot", "1");
-		
-			// Set the boot device
-			if(dev_idx == 0)
-				setenv("bootdevice", "eMMC");
-			else
-				setenv("bootdevice", "SD");
-
-
-		} // end of menu
-*/
+                     lcd_console_setpos(59, 31);
+                     lcd_console_setcolor(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_BLACK);
+                     lcd_puts("               ");
 
 		result = do_menu();
 
+	lcd_adjust_brightness(140);
+ 	lcd_console_setpos(54, 25);
+	lcd_console_setcolor(CONSOLE_COLOR_CYAN, CONSOLE_COLOR_BLACK);
+
 	switch(result) {
+
 	case BOOT_SD_NORMAL:
 		setenv("forcerecovery", "0");
 		setenv("customboot", "1");
@@ -913,11 +783,11 @@ static void Encore_boot(void)
 		dev_idx = 0;
 		setenv("customboot", "1");
 		break;
-
-/*	case BOOT_FASTBOOT:
-		display_feedback(BOOT_FASTBOOT);
+/*
+	case BOOT_FASTBOOT:
                 run_command("fastboot", 0);
-		break; */
+		break;
+*/
 	case INVALID:
 	default:
 		printf("Aborting boot!\n");
